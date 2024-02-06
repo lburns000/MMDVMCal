@@ -115,9 +115,24 @@ int main(int argc, char** argv)
 	else
 		::fprintf(stderr, "MMDVMCal: unknown speed - %s, using 460800\n", argv[1]);
 
-	CMMDVMCal cal(argv[2], speed);
+	if (argc == 3) {
+		CMMDVMCal cal(argv[2], speed);
+		return cal.run();
+	}
+	else {
+		// Debug text
+		::fprintf(stdout, "Running unattended..." EOL);
+		
+		std::vector<std::string> args;
 
-	return cal.run();
+		for (unsigned int i = 0; i < argc; ++i) {
+			args.push_back(std::string(argv[i]));
+		}
+
+		CMMDVMCal cal(argv[2], speed, args);
+		return cal.run();
+	}
+	
 }
 
 CMMDVMCal::CMMDVMCal(const std::string& port, SERIAL_SPEED speed) :
@@ -170,7 +185,66 @@ m_freqSweepCounter(0),
 m_freqSweepMin(-1500),
 m_freqSweepMax(1500),
 m_freqSweepTestResultLast(0),
-m_freqSweepTestTaken(false)
+m_freqSweepTestTaken(false),
+m_interactive(true)
+{
+	m_eepromData = new CEEPROMData;
+	m_buffer = new unsigned char[BUFFER_LENGTH];
+}
+
+CMMDVMCal::CMMDVMCal(const std::string &port, SERIAL_SPEED speed, const std::vector<std::string>& args) :
+m_serial(port, speed),
+m_console(),
+m_transmit(false),
+m_carrier(false),
+m_txLevel(50.0F),
+m_rxLevel(50.0F),
+m_txDCOffset(0),
+m_rxDCOffset(0),
+m_txInvert(false),
+m_rxInvert(false),
+m_pttInvert(false),
+m_frequency(433000000U),
+m_startfrequency(433000000U),
+m_step(50U),
+m_power(100.0F),
+m_mode(STATE_DSTARCAL),
+m_duplex(true),
+m_debug(false),
+m_buffer(NULL),
+m_length(0U),
+m_offset(0U),
+m_hwType(),
+m_version(0U),
+m_dstarEnabled(false),
+m_dmrEnabled(false),
+m_dmrBERFEC(true),
+m_ysfEnabled(false),
+m_p25Enabled(false),
+m_nxdnEnabled(false),
+m_m17Enabled(false),
+m_pocsagEnabled(false),
+m_fmEnabled(false),
+m_ax25Enabled(false),
+m_freqText("t30"),
+m_freqOffsetText("t32"),
+m_statusText("t1"),
+m_tmpBER(0.0f),
+m_tmpBERTotal(0.0f),
+m_freqSweep(false),
+m_tmpBERNum(0),
+m_tmpBERFreqOffsetMin(0),
+m_tmpBERFreqOffsetMax(0),
+m_tmpBERFreqDir(0),
+m_tmpBERFreqOffset(0),
+m_tmpBERFreqOffsetFirst(0),
+m_freqSweepCounter(0),
+m_freqSweepMin(-1500),
+m_freqSweepMax(1500),
+m_freqSweepTestResultLast(0),
+m_freqSweepTestTaken(false),
+m_interactive(false),
+m_arguments(args)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -195,21 +269,38 @@ int CMMDVMCal::run()
 		return 1;
 	}
 
-	ret = m_console.open();
-	if (!ret) {
-		delete m_eepromData;
-		m_serial.close();
-		return 1;
+	if (m_interactive) {
+		ret = m_console.open();
+		if (!ret) {
+			delete m_eepromData;
+			m_serial.close();
+			return 1;
+		}
+	}
+	else {
+
 	}
 
 	setNextionText(m_statusText, (char *) "Calibration Mode");					// Make it obvious that this is running on the Nextion Screen
-	setNextionInt(m_freqOffsetText, 0);											// Start with 0 frequency offset and show on NExtion screen
+	setNextionInt(m_freqOffsetText, 0);											// Start with 0 frequency offset and show on Nextion screen
 	setNextionFloat(m_freqText, (double) (m_startfrequency / 1000000.0f));		// Display current frequency on Nextion screen
 
-	if (m_hwType == HWT_MMDVM)
-		loop_MMDVM();
-	else if (m_hwType == HWT_MMDVM_HS)
-		loop_MMDVM_HS();
+	if (m_hwType == HWT_MMDVM) {
+		if (m_interactive) {
+			loop_MMDVM();
+		}
+		else {
+			runOnce_MMDVM();
+		}
+	}
+	else if (m_hwType == HWT_MMDVM_HS) {
+		if (m_interactive) {
+			loop_MMDVM_HS();
+		}
+		else {
+			runOnce_MMDVM_HS();
+		}
+	}
 
 	if (m_transmit)
 		setTransmit();
@@ -219,7 +310,10 @@ int CMMDVMCal::run()
 	setNextionText(m_freqText, (char *) "");
 
 	m_serial.close();
-	m_console.close();
+
+	if (m_interactive) {
+		m_console.close();
+	}
 
 	if (m_hwType == HWT_MMDVM) {
 		::fprintf(stdout, "PTT Invert: %s, RX Invert: %s, TX Invert: %s, RX Level: %.1f%%, TX Level: %.1f%%, TX DC Offset: %d, RX DC Offset: %d" EOL,
@@ -379,6 +473,11 @@ void CMMDVMCal::loop_MMDVM()
 
 		counter++;
 	}
+}
+
+void CMMDVMCal::runOnce_MMDVM()
+{
+	
 }
 
 void CMMDVMCal::displayHelp_MMDVM()
@@ -584,6 +683,51 @@ void CMMDVMCal::loop_MMDVM_HS()
 
 		counter++;
 		m_freqSweepCounter++;
+	}
+}
+
+void CMMDVMCal::runOnce_MMDVM_HS()
+{
+	m_mode = STATE_DMRCAL;
+	unsigned int counter = 0U;
+	m_freqSweepCounter = 0U;
+
+	setFrequency();
+
+	switch (m_version) {
+	case 1U:
+		writeConfig1(m_txLevel, m_debug);
+		break;
+	case 2U:
+		writeConfig2(m_txLevel, m_debug);
+		break;
+	}
+
+	// Parse the arguments
+	std::string mode(m_arguments[3]);
+	std::string operation(m_arguments[4]);
+
+	if (mode == "dmr") {
+		if (operation == "ber") {
+			::fprintf(stdout, "Beginning DMR BER test..." EOL);
+		}
+		else if (operation == "autocal") {
+			::fprintf(stdout, "Beginning DMR autocalibration..." EOL);
+		}
+	}
+	else if (mode == "eeprom") {
+		if (operation == "check") {
+			::fprintf(stdout, "Checking EEPROM..." EOL);
+		}
+		else if (operation == "read") {
+			::fprintf(stdout, "Reading EEPROM..." EOL);
+		}
+		else if (operation == "write") {
+			::fprintf(stdout, "Writing EEPROM..." EOL);
+		}
+		else if (operation == "init") {
+			::fprintf(stdout, "Initializing EEPROM..." EOL);
+		}
 	}
 }
 
@@ -1553,7 +1697,9 @@ bool CMMDVMCal::setEnterFreq()
 
 	::fprintf(stdout, "Enter frequency (current %u Hz):" EOL, m_frequency);
 
-	m_console.close();
+	if (m_interactive) {
+		m_console.close();
+	}
 
 	if (std::fgets(buff, 256, stdin) != NULL ) {
 
@@ -1570,7 +1716,9 @@ bool CMMDVMCal::setEnterFreq()
 			::fprintf(stdout, "Not valid frequency" EOL);
 	}
 
-	m_console.open();
+	if (m_interactive) {
+		m_console.open();
+	}
 
 	displayHelp_MMDVM_HS();
 
@@ -1707,7 +1855,9 @@ bool CMMDVMCal::setStepFreq()
 
 	::fprintf(stdout, "Enter frequency step (current %u Hz):" EOL, m_step);
 
-	m_console.close();
+	if (m_interactive) {
+		m_console.close();
+	}
 
 	if (std::fgets(buff, 256, stdin) != NULL ) {
 
@@ -1721,7 +1871,9 @@ bool CMMDVMCal::setStepFreq()
 			::fprintf(stdout, "Not valid frequency step" EOL);
 	}
 
-	m_console.open();
+	if (m_interactive) {
+		m_console.open();
+	}
 
 	displayHelp_MMDVM_HS();
 
