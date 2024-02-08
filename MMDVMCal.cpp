@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 	else {
 		// Debug text
 		::fprintf(stdout, "Running unattended..." EOL);
-		
+
 		std::vector<std::string> args;
 
 		for (unsigned int i = 0; i < argc; ++i) {
@@ -703,13 +703,30 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 		break;
 	}
 
-	// Parse the arguments
-	std::string mode(m_arguments[3]);
-	std::string operation(m_arguments[4]);
+	std::string mode, operation;
+
+	// Parse the additional arguments
+	if (m_arguments.size() >= 4) {
+		mode = m_arguments[3];
+	}
+	if (m_arguments.size() >= 5) {
+		operation = m_arguments[4];
+	}
 
 	if (mode == "dmr") {
 		if (operation == "ber") {
-			::fprintf(stdout, "Beginning DMR BER test..." EOL);
+			// Check for additional frequency argument
+			if (m_arguments.size() >= 6) {
+				unsigned int newFreq = std::stoul(m_arguments[5]);
+				if (newFreq >= 100000000U && newFreq <= 999999999U) {
+					// m_startfrequency = newFreq;
+					// m_frequency = m_startfrequency;
+					// setFrequency();
+					setFreqValue(newFreq, true);
+				}
+			}
+
+			::fprintf(stdout, "Beginning DMR BER test (%u Hz)..." EOL, m_startfrequency);
 		}
 		else if (operation == "autocal") {
 			::fprintf(stdout, "Beginning DMR autocalibration..." EOL);
