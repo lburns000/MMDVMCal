@@ -20,6 +20,8 @@
 #if !defined(BERCAL_H)
 #define BERCAL_H
 
+#include "Timer.h"
+
 class CBERCal {
 public:
 	CBERCal();
@@ -40,8 +42,9 @@ private:
 	unsigned int m_bits;
 	unsigned int m_frames;
 
-	unsigned int m_timeout;
-	unsigned int m_timer;
+	//unsigned int m_timeout;
+	//unsigned int m_timerInt;
+	CTimer		 m_timer;
 
 	void NXDNScrambler(unsigned char* data);
 	unsigned int regenerateDStar(unsigned int& a, unsigned int& b);
@@ -51,8 +54,8 @@ private:
 
 	unsigned char countErrs(unsigned char a, unsigned char b);
 
-	void timerStart();
-	void timerStop();
+	//void timerStart();
+	//void timerStop();
 };
 
 #endif

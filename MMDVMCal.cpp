@@ -718,15 +718,47 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 			// Check for additional frequency argument
 			if (m_arguments.size() >= 6) {
 				unsigned int newFreq = std::stoul(m_arguments[5]);
+				// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
 				if (newFreq >= 100000000U && newFreq <= 999999999U) {
-					// m_startfrequency = newFreq;
-					// m_frequency = m_startfrequency;
-					// setFrequency();
 					setFreqValue(newFreq, true);
+				}
+				else {
+					::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
 				}
 			}
 
 			::fprintf(stdout, "Beginning DMR BER test (%u Hz)..." EOL, m_startfrequency);
+
+			// Need to start BER test and set a timer for specified time (if given) or 5s as a default
+			unsigned int duration = 5U;
+			if (m_arguments.size() >= 7) {
+				duration = std::stoul(m_arguments[6]);
+			}
+
+			// Run loop until counter is equivalent to duration value
+			unsigned int tick = 0;
+			::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
+			setDMRBER_FEC();
+
+			while (tick < duration) {
+				RESP_TYPE_MMDVM resp = getResponse();
+
+				if (resp == RTM_OK)
+					displayModem(m_buffer, m_length);
+				
+				m_ber.clock();
+				sleep(5U);
+
+				// 1 second tick
+				if (counter >= (200U * tick)) {
+					if (getStatus())
+	    				displayModem(m_buffer, m_length);
+					tick++;
+				}
+
+				counter++;
+			}
+
 		}
 		else if (operation == "autocal") {
 			::fprintf(stdout, "Beginning DMR autocalibration..." EOL);

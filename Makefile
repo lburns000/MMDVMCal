@@ -11,8 +11,8 @@ LDFLAGS =
 # Use the following line if compiling on a platform that supports I2C.
 # LIBS = -li2c
 
-MMDVMCal:	24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o
-		$(CXX) $(LDFLAGS) -o MMDVMCal 24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o  Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o $(LIBS)
+MMDVMCal:	24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o
+		$(CXX) $(LDFLAGS) -o MMDVMCal 24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o  Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o $(LIBS)
 
 BERCal.o:	BERCal.cpp BERCal.h Golay24128.h Utils.h
 		$(CXX) $(CXXFLAGS) -c BERCal.cpp
@@ -52,6 +52,9 @@ SerialPort.o:	SerialPort.cpp SerialPort.h
 
 smbus.o:	smbus.c smbus.h
 		$(CC) $(CFLAGS) -c smbus.c
+
+Timer.o:	Timer.cpp Timer.h
+		$(CXX) $(CFLAGS) -c Timer.cpp
 
 Console.o:	Console.cpp Console.h
 		$(CXX) $(CXXFLAGS) -c Console.cpp
