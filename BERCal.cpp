@@ -531,6 +531,9 @@ CBERCal::CBERCal():
 m_errors(0U),
 m_bits(0U),
 m_frames(0U),
+m_errorsPrev(0U),
+m_bitsPrev(0),
+m_framesPrev(0),
 //m_timeout(300U),
 //m_timerInt(0U),
 m_timer(1000U, 0U, 300U)
@@ -595,6 +598,9 @@ void CBERCal::DMRFEC(const unsigned char* buffer, const unsigned char m_seq)
 		::fprintf(stdout, "DMR voice header received" EOL);
 		//timerStart();
 		m_timer.start();
+		m_errorsPrev = m_errors;
+		m_bitsPrev = m_bits;
+		m_framesPrev = m_frames;
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
@@ -605,6 +611,9 @@ void CBERCal::DMRFEC(const unsigned char* buffer, const unsigned char m_seq)
 
 		//timerStop();
 		m_timer.stop();
+		m_errorsPrev = m_errors;
+		m_bitsPrev = m_bits;
+		m_framesPrev = m_frames;
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
@@ -687,6 +696,9 @@ void CBERCal::DMRFEC(const unsigned char *buffer, const unsigned char m_seq, flo
 		//::fprintf(stdout, "Radio DMR transmission detected (voice header received)" EOL);
 		//timerStart();
 		m_timer.start();
+		m_errorsPrev = m_errors;
+		m_bitsPrev = m_bits;
+		m_framesPrev = m_frames;
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
@@ -705,6 +717,9 @@ void CBERCal::DMRFEC(const unsigned char *buffer, const unsigned char m_seq, flo
 		//::fprintf(stdout, "DMR voice end received. Avg BER = %.4f%% - %s" EOL, *BER, quality);
 		//timerStop();
 		m_timer.stop();
+		m_errorsPrev = m_errors;
+		m_bitsPrev = m_bits;
+		m_framesPrev = m_frames;
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
@@ -1322,10 +1337,23 @@ unsigned int CBERCal::regenerateYSFDN(unsigned char* bytes)
 
 float CBERCal::getCurrentBER()
 {
-	if (m_bits == 0U) {
+	// No data, return 0
+	if (m_bits == 0U && m_bitsPrev == 0U) {
+		// debug
+		::fprintf(stdout, "No BER data, returning 0" EOL);
 		return 0.0F;
 	}
 
+	// No current data, use previous data
+	if (m_bits == 0U) {
+		// debug
+		::fprintf(stdout, "Using previous BER data" EOL);
+		return float(m_errorsPrev * 100U) / float(m_bitsPrev);
+	}
+
+	// There is current data, use it
+	// debug
+	::fprintf(stdout, "Using current BER data" EOL);
 	return float(m_errors * 100U) / float(m_bits);
 }
 
@@ -1335,6 +1363,12 @@ void CBERCal::clock(unsigned int ms)
 	if (m_timer.isRunning() && m_timer.hasExpired()) {
 			if (m_bits > 0U)
 				::fprintf(stdout, "Transmission lost, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
+
+			if (m_bits != 0U) {
+				m_errorsPrev = m_errors;
+				m_bitsPrev = m_bits;
+				m_framesPrev = m_frames;
+			}
 
 			m_errors = 0U;
 			m_bits = 0U;

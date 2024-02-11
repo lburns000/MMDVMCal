@@ -44,6 +44,11 @@ private:
 	unsigned int m_bits;
 	unsigned int m_frames;
 
+	// These are used for storing the last run, so if the user stops transmitting, getCurrentBER() won't return 0
+	unsigned int m_errorsPrev;
+	unsigned int m_bitsPrev;
+	unsigned int m_framesPrev;
+
 	//unsigned int m_timeout;
 	//unsigned int m_timerInt;
 	CTimer		 m_timer;

@@ -206,6 +206,11 @@ private:
 	bool writeCurrentRxOffsetConfig();							// Write current frequency offset to config file (Rx only)
 	bool writeEEPROMOffsetsConfig();							// Write offsets stored in EEPROM to MMDVMHost config file
 
+	bool runOnceRadio();										// Run once to do a radio operation
+	bool runOnceEEPROM();										// Run once to do an EEPROM operation
+	bool runOnceDMR();											// runOnceRadio() will call this
+	// TODO: Add other modes
+
 	bool initModem();
 	void displayModem(const unsigned char* buffer, unsigned int length);
 	bool writeConfig1(float txlevel, bool debug);
