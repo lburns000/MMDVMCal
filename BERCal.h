@@ -35,7 +35,9 @@ public:
 	void P25FEC(const unsigned char* buffer);
 	void NXDNFEC(const unsigned char* buffer, const unsigned char m_tag);
 
-	void clock();
+	float getCurrentBER();	// Get the current BER, even if the transmission isn't over
+
+	void clock(unsigned int ms);
 
 private:
 	unsigned int m_errors;

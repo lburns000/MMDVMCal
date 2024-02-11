@@ -1320,9 +1320,18 @@ unsigned int CBERCal::regenerateYSFDN(unsigned char* bytes)
 	return regenerateDMR(a, b, c);
 }
 
-void CBERCal::clock()
+float CBERCal::getCurrentBER()
 {
-	m_timer.clock();
+	if (m_bits == 0U) {
+		return 0.0F;
+	}
+
+	return float(m_errors * 100U) / float(m_bits);
+}
+
+void CBERCal::clock(unsigned int ms)
+{
+	m_timer.clock(ms);
 	if (m_timer.isRunning() && m_timer.hasExpired()) {
 			if (m_bits > 0U)
 				::fprintf(stdout, "Transmission lost, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));

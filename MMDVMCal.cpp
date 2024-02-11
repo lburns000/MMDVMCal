@@ -181,12 +181,14 @@ m_tmpBERFreqOffsetMax(0),
 m_tmpBERFreqDir(0),
 m_tmpBERFreqOffset(0),
 m_tmpBERFreqOffsetFirst(0),
-m_freqSweepCounter(0),
+//m_freqSweepCounter(0),
 m_freqSweepMin(-1500),
 m_freqSweepMax(1500),
 m_freqSweepTestResultLast(0),
 m_freqSweepTestTaken(false),
-m_interactive(true)
+m_interactive(true),
+m_statusTimer(250U, 1U),
+m_freqSweepTimer(1000U, 1U)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -238,13 +240,15 @@ m_tmpBERFreqOffsetMax(0),
 m_tmpBERFreqDir(0),
 m_tmpBERFreqOffset(0),
 m_tmpBERFreqOffsetFirst(0),
-m_freqSweepCounter(0),
+//m_freqSweepCounter(0),
 m_freqSweepMin(-1500),
 m_freqSweepMax(1500),
 m_freqSweepTestResultLast(0),
 m_freqSweepTestTaken(false),
 m_interactive(false),
-m_arguments(args)
+m_arguments(args),
+m_statusTimer(250U, 1U),
+m_freqSweepTimer(1000U, 1U)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -462,7 +466,7 @@ void CMMDVMCal::loop_MMDVM()
 		if (resp == RTM_OK)
 			displayModem(m_buffer, m_length);
 
-		m_ber.clock();
+		m_ber.clock(5U); // TODO: Update this to use a stopwatch
 		sleep(5U);
 
 		if (counter >= 200U) {
@@ -521,8 +525,11 @@ void CMMDVMCal::displayHelp_MMDVM()
 void CMMDVMCal::loop_MMDVM_HS()
 {
 	m_mode = STATE_DMRCAL;
-	unsigned int counter = 0U;
-	m_freqSweepCounter = 0U;
+	unsigned int ms = 0U;
+	CStopWatch stopWatch;
+	stopWatch.start();
+
+	m_statusTimer.start();
 
 	setFrequency();
 
@@ -665,32 +672,34 @@ void CMMDVMCal::loop_MMDVM_HS()
 		if (resp == RTM_OK)
 			displayModem(m_buffer, m_length);
 
-		m_ber.clock();
+		m_ber.clock(ms);
 		sleep(5U);
 
-		// We are performing the DMR BER Frequency Sweep for Optimal Rx Offset
-		if (m_freqSweep && m_freqSweepCounter >= 200) {
+		if (m_freqSweep && m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
 			doFreqSweep();
-			m_freqSweepCounter = 0U;
+			m_freqSweepTimer.start();
 		}
 
-		// 1 second tick
-		if (counter >= 200U) {
+		if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
 			if (getStatus())
-	    		displayModem(m_buffer, m_length);
-			counter = 0U;
+				displayModem(m_buffer, m_length);
+			m_statusTimer.start();
 		}
 
-		counter++;
-		m_freqSweepCounter++;
+		ms = stopWatch.elapsed();
+		stopWatch.start();
+		
+		//m_freqSweepCounter++;
+		m_statusTimer.clock(ms);
+		m_freqSweepTimer.clock(ms);
 	}
 }
 
 void CMMDVMCal::runOnce_MMDVM_HS()
 {
 	m_mode = STATE_DMRCAL;
-	unsigned int counter = 0U;
-	m_freqSweepCounter = 0U;
+	unsigned int ms = 0U;
+	//m_freqSweepCounter = 0U;
 
 	setFrequency();
 
@@ -735,29 +744,38 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 				duration = std::stoul(m_arguments[6]);
 			}
 
-			// Run loop until counter is equivalent to duration value
-			unsigned int tick = 0;
+			CTimer tickTimer(1000, duration);
+			CStopWatch stopWatch;
 			::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
 			setDMRBER_FEC();
+			stopWatch.start();
+			tickTimer.start();
+			m_statusTimer.start();
 
-			while (tick < duration) {
+			while (tickTimer.isRunning() && !tickTimer.hasExpired()) {
 				RESP_TYPE_MMDVM resp = getResponse();
 
 				if (resp == RTM_OK)
 					displayModem(m_buffer, m_length);
 				
-				m_ber.clock();
-				sleep(5U);
+				ms = stopWatch.elapsed();
+				stopWatch.start();
 
-				// 1 second tick
-				if (counter >= (200U * tick)) {
+				m_ber.clock(ms);
+				m_statusTimer.clock(ms);
+				tickTimer.clock(ms);
+
+				if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
 					if (getStatus())
-	    				displayModem(m_buffer, m_length);
-					tick++;
+						displayModem(m_buffer, m_length);
+					
+					m_statusTimer.start();
 				}
 
-				counter++;
+				sleep(5U);			
 			}
+
+			::fprintf(stdout, "Total BER: %.5f%%" EOL, m_ber.getCurrentBER());
 
 		}
 		else if (operation == "autocal") {
@@ -2347,7 +2365,8 @@ bool CMMDVMCal::setFreqSweep()
 	m_tmpBERFreqOffsetMin = 0;
 	m_tmpBERFreqDir = 0;
 	m_freqSweep = true;
-	m_freqSweepCounter = 0U;
+	//m_freqSweepCounter = 0U;
+	m_freqSweepTimer.start();
 
 	return true;
 }
