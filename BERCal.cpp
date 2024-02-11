@@ -1375,32 +1375,7 @@ void CBERCal::clock(unsigned int ms)
 			m_frames = 0U;
 			m_timer.stop();
 	}
-
-	// if (m_timerInt > 0U && m_timeout > 0U) {
-	// 	m_timerInt += 1U;
-		
-	// 	if (m_timerInt >= m_timeout) {
-	// 		if (m_bits > 0U)
-	// 			::fprintf(stdout, "Transmission lost, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
-
-	// 		m_errors = 0U;
-	// 		m_bits = 0U;
-	// 		m_frames = 0U;
-	// 		timerStop();
-	// 	}
-	// }
 }
-
-// void CBERCal::timerStart()
-// {
-// 	if (m_timeout > 0U)
-// 		m_timerInt = 1U;
-// }
-
-// void CBERCal::timerStop()
-// {
-// 	m_timerInt = 0U;
-// }
 
 unsigned char CBERCal::countErrs(unsigned char a, unsigned char b)
 {

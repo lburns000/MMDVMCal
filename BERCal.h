@@ -48,9 +48,6 @@ private:
 	unsigned int m_errorsPrev;
 	unsigned int m_bitsPrev;
 	unsigned int m_framesPrev;
-
-	//unsigned int m_timeout;
-	//unsigned int m_timerInt;
 	CTimer		 m_timer;
 
 	void NXDNScrambler(unsigned char* data);
@@ -60,9 +57,6 @@ private:
 	unsigned int regenerateYSFDN(unsigned char* bytes);
 
 	unsigned char countErrs(unsigned char a, unsigned char b);
-
-	//void timerStart();
-	//void timerStop();
 };
 
 #endif

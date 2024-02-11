@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
 		std::vector<std::string> args;
 
-		for (unsigned int i = 0; i < argc; ++i) {
+		for (unsigned int i = 0; i < (unsigned int) argc; ++i) {
 			args.push_back(std::string(argv[i]));
 		}
 
@@ -736,86 +736,6 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 			return;
 		}
 	}
-
-
-	// if (m_arguments.size() >= 5) {
-	// 	operation = m_arguments[4];
-	// }
-
-	// if (mode == "dmr") {
-	// 	if (operation == "ber") {
-	// 		// Check for additional frequency argument
-	// 		if (m_arguments.size() >= 6) {
-	// 			unsigned int newFreq = std::stoul(m_arguments[5]);
-	// 			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
-	// 			if (newFreq >= 100000000U && newFreq <= 999999999U) {
-	// 				setFreqValue(newFreq, true);
-	// 			}
-	// 			else {
-	// 				::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
-	// 			}
-	// 		}
-
-	// 		::fprintf(stdout, "Beginning DMR BER test (%u Hz)..." EOL, m_startfrequency);
-
-	// 		// Need to start BER test and set a timer for specified time (if given) or 5s as a default
-	// 		unsigned int duration = 5U;
-	// 		if (m_arguments.size() >= 7) {
-	// 			duration = std::stoul(m_arguments[6]);
-	// 		}
-
-	// 		CTimer tickTimer(1000, duration);
-	// 		CStopWatch stopWatch;
-	// 		::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
-	// 		setDMRBER_FEC();
-	// 		stopWatch.start();
-	// 		tickTimer.start();
-	// 		m_statusTimer.start();
-
-	// 		while (tickTimer.isRunning() && !tickTimer.hasExpired()) {
-	// 			RESP_TYPE_MMDVM resp = getResponse();
-
-	// 			if (resp == RTM_OK)
-	// 				displayModem(m_buffer, m_length);
-				
-	// 			ms = stopWatch.elapsed();
-	// 			stopWatch.start();
-
-	// 			m_ber.clock(ms);
-	// 			m_statusTimer.clock(ms);
-	// 			tickTimer.clock(ms);
-
-	// 			if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
-	// 				if (getStatus())
-	// 					displayModem(m_buffer, m_length);
-					
-	// 				m_statusTimer.start();
-	// 			}
-
-	// 			sleep(5U);			
-	// 		}
-
-	// 		::fprintf(stdout, "Total BER: %.5f%%" EOL, m_ber.getCurrentBER());
-
-	// 	}
-	// 	else if (operation == "autocal") {
-	// 		::fprintf(stdout, "Beginning DMR autocalibration..." EOL);
-	// 	}
-	// }
-	// else if (mode == "eeprom") {
-	// 	if (operation == "check") {
-	// 		::fprintf(stdout, "Checking EEPROM..." EOL);
-	// 	}
-	// 	else if (operation == "read") {
-	// 		::fprintf(stdout, "Reading EEPROM..." EOL);
-	// 	}
-	// 	else if (operation == "write") {
-	// 		::fprintf(stdout, "Writing EEPROM..." EOL);
-	// 	}
-	// 	else if (operation == "init") {
-	// 		::fprintf(stdout, "Initializing EEPROM..." EOL);
-	// 	}
-	// }
 }
 
 void CMMDVMCal::displayHelp_MMDVM_HS()
@@ -2896,6 +2816,32 @@ bool CMMDVMCal::runOnceRadio()
 
 bool CMMDVMCal::runOnceEEPROM()
 {
+	if (m_arguments.size() < 5)
+		return false;
+
+	std::string operation = m_arguments[4];
+
+	if (operation == "check") {
+		::fprintf(stdout, "Checking EEPROM..." EOL);
+		// Do checking of EEPROM
+		return true;
+	}
+	else if (operation == "read") {
+		::fprintf(stdout, "Reading EEPROM..." EOL);
+		// Read EEPROM
+		return true;
+	}
+	else if (operation == "write") {
+		::fprintf(stdout, "Writing EEPROM..." EOL);
+		// Write EEPROM
+		return true;
+	}
+	else if (operation == "init") {
+		::fprintf(stdout, "Initializing EEPROM..." EOL);
+		// Initialize EEPROM
+		return true;
+	}
+
     return false;
 }
 
@@ -2950,11 +2896,16 @@ bool CMMDVMCal::runOnceDMR()
 			}
 			sleep(5U);			
 		}
-		::fprintf(stdout, "Total BER: %.5f%%" EOL, m_ber.getCurrentBER());
+		::fprintf(stdout, "Total BER: %.4f%%" EOL, m_ber.getCurrentBER());
 
+		return true;
+	}
+	else if (operation == "autocal") {
+		// Do autocal
+		return true;
 	}
 
-    return true;
+    return false;
 }
 
 bool CMMDVMCal::writeCurrentTxOffsetConfig()
