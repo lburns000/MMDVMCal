@@ -2871,14 +2871,14 @@ bool CMMDVMCal::runOnceDMR()
 		if (m_arguments.size() >= 7) {
 			duration = std::stoul(m_arguments[6]);
 		}
-		CTimer tickTimer(1000, duration);
+		CTimer durationTimer(1000, duration);
 		CStopWatch stopWatch;
 		::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
 		setDMRBER_FEC();
 		stopWatch.start();
-		tickTimer.start();
+		durationTimer.start();
 		m_statusTimer.start();
-		while (tickTimer.isRunning() && !tickTimer.hasExpired()) {
+		while (durationTimer.isRunning() && !durationTimer.hasExpired()) {
 			RESP_TYPE_MMDVM resp = getResponse();
 			if (resp == RTM_OK)
 				displayModem(m_buffer, m_length);
@@ -2887,7 +2887,7 @@ bool CMMDVMCal::runOnceDMR()
 			stopWatch.start();
 			m_ber.clock(ms);
 			m_statusTimer.clock(ms);
-			tickTimer.clock(ms);
+			durationTimer.clock(ms);
 			if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
 				if (getStatus())
 					displayModem(m_buffer, m_length);
@@ -2901,7 +2901,49 @@ bool CMMDVMCal::runOnceDMR()
 		return true;
 	}
 	else if (operation == "autocal") {
+		// Check for additional frequency argument
+		if (m_arguments.size() >= 6) {
+			unsigned int newFreq = std::stoul(m_arguments[5]);
+			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
+			if (newFreq >= 100000000U && newFreq <= 999999999U) {
+				setFreqValue(newFreq, true);
+			}
+			else {
+				::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
+			}
+		}
+
+		CStopWatch stopWatch;
+		stopWatch.start();
+
 		// Do autocal
+		setFreqSweep();
+		while (m_freqSweep) {
+			RESP_TYPE_MMDVM resp = getResponse();
+			if (resp == RTM_OK)
+				displayModem(m_buffer, m_length);
+
+			ms = stopWatch.elapsed();
+			stopWatch.start();
+			m_ber.clock(ms);
+			m_statusTimer.clock(ms);
+			m_freqSweepTimer.clock(ms);
+
+			if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
+				if (getStatus())
+					displayModem(m_buffer, m_length);
+				
+				m_statusTimer.start();
+			}
+
+		 	if (m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
+				doFreqSweep();
+				m_freqSweepTimer.start();
+		 	}
+
+			sleep(5U);
+
+		}
 		return true;
 	}
 
