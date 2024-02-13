@@ -209,6 +209,8 @@ private:
 	bool runOnceRadio();										// Run once to do a radio operation
 	bool runOnceEEPROM();										// Run once to do an EEPROM operation
 	bool runOnceDMR();											// runOnceRadio() will call this
+	bool runOnceEEPROMRead();									// runOnceEEPROM() will call this
+	bool runOnceEEPROMWrite();									// runOnceEEPROM() will call this
 	// TODO: Add other modes
 
 	bool initModem();

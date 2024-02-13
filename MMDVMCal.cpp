@@ -725,7 +725,7 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 	if (mode == std::string("eeprom")) {
 		ret = runOnceEEPROM();
 		if (!ret) {
-			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> eeprom <check|init|read|write> [additional specifiers - see documentation]", m_arguments[0].c_str());
+			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> eeprom <check|init|read|write> [additional specifiers - see documentation]" EOL, m_arguments[0].c_str());
 			return;
 		}
 	}
@@ -2823,20 +2823,33 @@ bool CMMDVMCal::runOnceEEPROM()
 
 	if (operation == "check") {
 		::fprintf(stdout, "Checking EEPROM..." EOL);
-		// Do checking of EEPROM
+		::fprintf(stdout, "Onboard EEPROM module %s" EOL, m_eepromData->checkDetected() ? "detected." : "not detected.");
 		return true;
 	}
 	else if (operation == "read") {
-		::fprintf(stdout, "Reading EEPROM..." EOL);
-		// Read EEPROM
-		return true;
+		if (!m_eepromData->checkDetected()) {
+			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
+			return true;
+		}
+		
+		return runOnceEEPROMRead();
 	}
 	else if (operation == "write") {
+		if (!m_eepromData->checkDetected()) {
+			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
+			return true;
+		}
+		
 		::fprintf(stdout, "Writing EEPROM..." EOL);
 		// Write EEPROM
 		return true;
 	}
 	else if (operation == "init") {
+		if (!m_eepromData->checkDetected()) {
+			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
+			return true;
+		}
+		
 		::fprintf(stdout, "Initializing EEPROM..." EOL);
 		// Initialize EEPROM
 		return true;
@@ -2947,6 +2960,58 @@ bool CMMDVMCal::runOnceDMR()
 		return true;
 	}
 
+    return false;
+}
+
+bool CMMDVMCal::runOnceEEPROMRead()
+{
+    ::fprintf(stdout, "Reading EEPROM..." EOL);
+		if (m_arguments.size() < 6) {
+			return false;
+		}
+		// What to read?
+		std::string readObject = m_arguments[5];
+		if (readObject == "vhf") {
+			if (m_arguments.size() < 7) {
+				return false;
+			}
+			std::string readObjectSpecifier = m_arguments[6];
+			if (readObjectSpecifier == "tx") {
+				::fprintf(stdout, "Result: %d" EOL, m_eepromData->getTxOffsetVHF());
+				return true;
+			}
+			if (readObjectSpecifier == "rx") {
+				::fprintf(stdout, "Result: %d" EOL, m_eepromData->getRxOffsetVHF());
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+
+		if (readObject == "uhf") {
+			if (m_arguments.size() < 7) {
+				return false;
+			}
+			std::string readObjectSpecifier = m_arguments[6];
+			if (readObjectSpecifier == "tx") {
+				::fprintf(stdout, "Result: %d" EOL, m_eepromData->getTxOffsetUHF());
+				return true;
+			}
+			if (readObjectSpecifier == "rx") {
+				::fprintf(stdout, "Result: %d" EOL, m_eepromData->getRxOffsetUHF());
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+
+		return false;
+}
+
+bool CMMDVMCal::runOnceEEPROMWrite()
+{
     return false;
 }
 
