@@ -2831,12 +2831,22 @@ bool CMMDVMCal::runOnceEEPROM()
 			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
 			return true;
 		}
+
+		if (!m_eepromData->checkData()) {
+			::fprintf(stdout, "Error: Invalid EEPROM data." EOL);
+			return true;
+		}
 		
 		return runOnceEEPROMRead();
 	}
 	else if (operation == "write") {
 		if (!m_eepromData->checkDetected()) {
 			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
+			return true;
+		}
+
+		if (!m_eepromData->checkData()) {
+			::fprintf(stdout, "Error: Invalid EEPROM data." EOL);
 			return true;
 		}
 		
@@ -3012,7 +3022,40 @@ bool CMMDVMCal::runOnceEEPROMRead()
 
 bool CMMDVMCal::runOnceEEPROMWrite()
 {
-    return false;
+	if (m_arguments.size() < 8)
+    	return false;
+
+	std::string writeObject = m_arguments[5];
+	std::string writeObjectSpecifier = m_arguments[6];
+	std::string writeObjectValue = m_arguments[7];
+
+	if (writeObject == "vhf") {
+		if (writeObjectSpecifier == "tx") {
+			m_eepromData->setTxOffsetVHF(std::stoi(writeObjectValue));
+			m_eepromData->writeOffsetData();
+			return true;
+		}
+		if (writeObjectSpecifier == "rx") {
+			m_eepromData->setRxOffsetVHF(std::stoi(writeObjectValue));
+			m_eepromData->writeOffsetData();
+			return true;
+		}
+	}
+
+	if (writeObject == "uhf") {
+		if (writeObjectSpecifier == "tx") {
+			m_eepromData->setTxOffsetUHF(std::stoi(writeObjectValue));
+			m_eepromData->writeOffsetData();
+			return true;
+		}
+		if (writeObjectSpecifier == "rx") {
+			m_eepromData->setRxOffsetUHF(std::stoi(writeObjectValue));
+			m_eepromData->writeOffsetData();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool CMMDVMCal::writeCurrentTxOffsetConfig()
