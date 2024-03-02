@@ -2854,15 +2854,10 @@ bool CMMDVMCal::runOnceEEPROM()
 		// Write EEPROM
 		return true;
 	}
-	else if (operation == "init") {
-		if (!m_eepromData->checkDetected()) {
-			::fprintf(stdout, "Error: Onboard EEPROM module not detected." EOL);
-			return true;
-		}
-		
+	else if (operation == "init") {		
 		::fprintf(stdout, "Initializing EEPROM..." EOL);
 		// Initialize EEPROM
-		return true;
+		return EEPROMInitialize();
 	}
 
     return false;
