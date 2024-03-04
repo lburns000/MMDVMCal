@@ -188,10 +188,18 @@ m_freqSweepTestResultLast(0),
 m_freqSweepTestTaken(false),
 m_interactive(true),
 m_statusTimer(250U, 1U),
-m_freqSweepTimer(1000U, 1U)
+m_freqSweepTimer(1000U, 1U),
+m_jsonData(),
+m_jsonFile("EEPROM.json", &m_jsonData)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
+	
+
+	// Debug
+	::fprintf(stdout, "Printing CJSONData..." EOL);
+	::fprintf(stdout, "JSON data (plain): %s" EOL, m_jsonData.getPlainString().c_str());
+	::fprintf(stdout, "JSON data (formatted):\n%s" EOL, m_jsonData.getFormattedString().c_str());
 }
 
 CMMDVMCal::CMMDVMCal(const std::string &port, SERIAL_SPEED speed, const std::vector<std::string>& args) :
@@ -248,7 +256,9 @@ m_freqSweepTestTaken(false),
 m_interactive(false),
 m_arguments(args),
 m_statusTimer(250U, 1U),
-m_freqSweepTimer(1000U, 1U)
+m_freqSweepTimer(1000U, 1U),
+m_jsonData(),
+m_jsonFile("EEPROM.json", &m_jsonData)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];

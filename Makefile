@@ -11,8 +11,8 @@ LDFLAGS =
 # Use the following line if compiling on a platform that supports I2C.
 # LIBS = -li2c
 
-MMDVMCal:	24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o StopWatch.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o
-		$(CXX) $(LDFLAGS) -o MMDVMCal 24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o  Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o StopWatch.o SerialPort.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o $(LIBS)
+MMDVMCal:	24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o SerialPort.o StopWatch.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o JSONData.o JSONFile.o
+		$(CXX) $(LDFLAGS) -o MMDVMCal 24cXX.o BERCal.o ConfigFile.o CRC.o EEPROMData.o  Hamming.o Golay24128.o P25Utils.o MMDVMCal.o NXDNLICH.o SerialController.o StopWatch.o SerialPort.o Timer.o smbus.o Console.o Utils.o YSFConvolution.o YSFFICH.o JSONData.o JSONFile.o $(LIBS)
 
 BERCal.o:	BERCal.cpp BERCal.h Golay24128.h Utils.h
 		$(CXX) $(CXXFLAGS) -c BERCal.cpp
@@ -70,6 +70,12 @@ YSFConvolution.o:	YSFConvolution.cpp YSFConvolution.h
 
 YSFFICH.o:	YSFFICH.cpp CRC.h Golay24128.h YSFConvolution.h YSFDefines.h YSFFICH.h
 		$(CXX) $(CXXFLAGS) -c YSFFICH.cpp
+
+JSONData.o:	JSONData.cpp JSONData.h
+		$(CXX) $(CXXFLAGS) -c JSONData.cpp
+
+JSONFile.o:	JSONFile.cpp JSONFile.h
+		$(CXX) $(CXXFLAGS) -c JSONFile.cpp
 
 
 MMDVMCal.o: GitVersion.h FORCE

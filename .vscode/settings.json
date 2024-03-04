@@ -52,6 +52,13 @@
         "ratio": "cpp",
         "iostream": "cpp",
         "mutex": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "any": "cpp",
+        "codecvt": "cpp",
+        "forward_list": "cpp",
+        "iomanip": "cpp",
+        "valarray": "cpp",
+        "list": "cpp",
+        "set": "cpp"
     }
 }

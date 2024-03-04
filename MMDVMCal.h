@@ -28,6 +28,8 @@
 #include "ConfigFile.h"
 #include "Timer.h"
 #include "StopWatch.h"
+#include "JSONData.h"
+#include "JSONFile.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -147,6 +149,8 @@ private:
 	std::vector<std::string> 	m_arguments;				// Arguments passed to the program
 	CTimer						m_statusTimer;
 	CTimer						m_freqSweepTimer;
+	CJSONData                   m_jsonData;
+	CJSONFile                   m_jsonFile;
 
 	void displayHelp_MMDVM();
 	void displayHelp_MMDVM_HS();
