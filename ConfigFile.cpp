@@ -15,7 +15,7 @@ ConfigFile::ConfigFile()
 	::sprintf(m_filename, "%s", CONFIG_FILE_PATH);
 	int n = readConfigData();
 	if (n < 0) {
-		::fprintf(stderr, "Error opening configuration file.\n");
+		//::fprintf(stderr, "Error opening configuration file.\n");
 		m_fileExists = false;
 	} else {
 		m_fileExists = true;

@@ -197,9 +197,44 @@ m_jsonFile("EEPROM.json", &m_jsonData)
 	
 
 	// Debug
-	::fprintf(stdout, "Printing CJSONData..." EOL);
-	::fprintf(stdout, "JSON data (plain): %s" EOL, m_jsonData.getPlainString().c_str());
-	::fprintf(stdout, "JSON data (formatted):\n%s" EOL, m_jsonData.getFormattedString().c_str());
+	::fprintf(stdout, "JSON file data is %svalid." EOL, m_jsonData.isValid() ? "" : "not ");
+
+	int uhfTx = 0;
+	int uhfRx = 0;
+	int vhfTx = 0;
+	int vhfRx = 0;
+
+	if (m_jsonData.isValid()) {
+		::fprintf(stdout, "Printing CJSONData..." EOL);
+		::fprintf(stdout, "JSON data (plain): %s" EOL, m_jsonData.getPlainString().c_str());
+		::fprintf(stdout, "JSON data (formatted):\n%s" EOL, m_jsonData.getFormattedString().c_str());
+		::fprintf(stdout, "Offsets in JSON File: UHF Tx: %d UHF Rx: %d VHF Tx: %d VHF Rx: %d" EOL, 
+	        uhfTx,
+			uhfRx,
+			vhfTx,
+			vhfRx);
+	}
+
+	if (m_eepromData->checkDetected() && m_eepromData->checkData()) {
+		bool matchingData = true;
+
+		if (m_eepromData->getTxOffsetUHF() != uhfTx) {
+			matchingData = false;
+		}
+		if (m_eepromData->getRxOffsetUHF() != uhfRx) {
+			matchingData = false;
+		}
+		if (m_eepromData->getTxOffsetVHF() != vhfTx) {
+			matchingData = false;
+		}
+		if (m_eepromData->getRxOffsetVHF() != vhfRx) {
+			matchingData = false;
+		}
+
+		if (!matchingData) {
+			::fprintf(stdout, "Mismatch between EEPROM and JSON file data." EOL);
+		}
+	}
 }
 
 CMMDVMCal::CMMDVMCal(const std::string &port, SERIAL_SPEED speed, const std::vector<std::string>& args) :
@@ -793,6 +828,7 @@ void CMMDVMCal::displayHelp_MMDVM_HS()
 
 bool CMMDVMCal::initModem()
 {
+	::fprintf(stdout, "Checking for modem..." EOL);
 	sleep(2000U);	// 2s
 
 	for (unsigned int i = 0U; i < 6U; i++) {

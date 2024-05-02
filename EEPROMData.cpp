@@ -43,17 +43,17 @@ m_crc8VHF(0U)
 	m_EEPROM = new C24CXX(EEPROM_DEVICE, EEPROM_ADDRESS, ET_8BITADDR);
 
 	if ((m_EEPROM->getFileDescriptor() < 0) || (m_EEPROM->eeprom_check() == false)) {
-		::fprintf(stderr, "Onboard EEPROM not detected.\n");
+		//::fprintf(stderr, "Onboard EEPROM not detected.\n");
 		m_EEPROMDetected = false;
 		m_txOffsetUHF = m_rxOffsetUHF = m_txOffsetVHF = m_rxOffsetVHF = 0;
 		return;
 	}
 
-	::fprintf(stdout, "Onboard EEPROM detected.\n");
+	//::fprintf(stdout, "Onboard EEPROM detected.\n");
 	m_EEPROMDetected = true;
 	bool dataIsGood = checkData();
 	if (!dataIsGood) {
-		::fprintf(stderr, "EEPROM offset data either does not exist or is corrupted.\n");
+		//::fprintf(stderr, "EEPROM offset data either does not exist or is corrupted.\n");
 	} else {
 		//::fprintf(stdout, "EEPROM offset data detected and verified.\n");
 		m_txOffsetUHF = readInt(EEPROMDATA_UHF_TXOFFSET_ADDRESS);

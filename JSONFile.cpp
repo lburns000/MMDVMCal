@@ -56,7 +56,7 @@ bool CJSONFile::write()
 
 bool CJSONFile::open()
 {
-    ::fprintf(stdout, "Attempting to open EEPROM.json.\n");
+    //::fprintf(stdout, "Attempting to open EEPROM.json.\n");
     m_file = new std::fstream;
     m_file->open(m_filename, std::ios::in | std::ios::out);
     if (m_file->is_open()) {

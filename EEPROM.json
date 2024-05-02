@@ -1,1 +1,8 @@
-{"Offset":{"UhfRx":0,"UhfTx":0,"VhfRx":0,"VhfTx":0}}
+{
+    "Offset": {
+        "UhfRx": 50,
+        "UhfTx": 150,
+        "VhfRx": -200,
+        "VhfTx": 0
+    }
+}
