@@ -2822,6 +2822,8 @@ bool CMMDVMCal::writeEEPROMOffsetsConfig()
 bool CMMDVMCal::runOnceRadio()
 {
 
+	if (m_arguments.size() < 5)
+		return false;
 
 	// TODO: Break this into smaller functions to clean this up
 
@@ -2829,32 +2831,26 @@ bool CMMDVMCal::runOnceRadio()
 	std::string operation = m_arguments[4];
 	//unsigned int ms = 0U;
 
-	if (m_arguments[3] == std::string("dstar")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "dstar") {
+		return runOnceDStar();
 	}
 	if (mode == "dmr") {		
 		return runOnceDMR();
 	}
-	if (m_arguments[3] == std::string("ysf")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "ysf") {
+		return runOnceYSF();
 	}
-	if (m_arguments[3] == std::string("p25")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "p25") {
+		return runOnceP25();
 	}
-	if (m_arguments[3] == std::string("nxdn")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "nxdn") {
+		return runOnceNXDN();
 	}
-	if (m_arguments[3] == std::string("m17")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "m17") {
+		return runOnceM17();
 	}
-	if (m_arguments[3] == std::string("pocsag")) {
-		::fprintf(stdout, "This functionality is not implemented yet." EOL);
-		return true;
+	if (m_arguments[3] == "pocsag") {
+		return runOncePOCSAG();
 	}
 
     return false;
@@ -2907,6 +2903,12 @@ bool CMMDVMCal::runOnceEEPROM()
 	}
 
     return false;
+}
+
+bool CMMDVMCal::runOnceDStar()
+{
+	::fprintf(stdout, "DStar functionality is not implemented yet." EOL);
+    return true;
 }
 
 bool CMMDVMCal::runOnceDMR()
@@ -3012,6 +3014,36 @@ bool CMMDVMCal::runOnceDMR()
 	}
 
     return false;
+}
+
+bool CMMDVMCal::runOnceYSF()
+{
+	::fprintf(stdout, "YSF functionality is not implemented yet." EOL);
+    return true;
+}
+
+bool CMMDVMCal::runOnceP25()
+{
+	::fprintf(stdout, "P25 functionality is not implemented yet." EOL);
+    return true;
+}
+
+bool CMMDVMCal::runOnceNXDN()
+{
+	::fprintf(stdout, "NXDN functionality is not implemented yet." EOL);
+    return true;
+}
+
+bool CMMDVMCal::runOnceM17()
+{
+	::fprintf(stdout, "M17 functionality is not implemented yet." EOL);
+    return true;
+}
+
+bool CMMDVMCal::runOncePOCSAG()
+{
+	::fprintf(stdout, "POCSAG functionality is not implemented yet." EOL);
+    return true;
 }
 
 bool CMMDVMCal::runOnceEEPROMRead()

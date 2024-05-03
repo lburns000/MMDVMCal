@@ -212,10 +212,15 @@ private:
 
 	bool runOnceRadio();										// Run once to do a radio operation
 	bool runOnceEEPROM();										// Run once to do an EEPROM operation
+	bool runOnceDStar();										// runOnceRadio() will call this
 	bool runOnceDMR();											// runOnceRadio() will call this
+	bool runOnceYSF();											// runOnceRadio() will call this
+	bool runOnceP25();											// runOnceRadio() will call this
+	bool runOnceNXDN();											// runOnceRadio() will call this
+	bool runOnceM17();											// runOnceRadio() will call this
+	bool runOncePOCSAG();										// runOnceRadio() will call this
 	bool runOnceEEPROMRead();									// runOnceEEPROM() will call this
 	bool runOnceEEPROMWrite();									// runOnceEEPROM() will call this
-	// TODO: Add other modes
 
 	bool initModem();
 	void displayModem(const unsigned char* buffer, unsigned int length);
