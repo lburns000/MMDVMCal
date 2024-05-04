@@ -742,10 +742,9 @@ void CMMDVMCal::loop_MMDVM_HS()
 
 void CMMDVMCal::runOnce_MMDVM_HS()
 {
-	m_mode = STATE_DMRCAL;
-	//unsigned int ms = 0U;
-	//m_freqSweepCounter = 0U;
+	assert(m_arguments.size() >= 4);
 
+	m_mode = STATE_DMRCAL;
 	setFrequency();
 
 	switch (m_version) {
@@ -757,14 +756,9 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 		break;
 	}
 
-	std::string mode, operation;
-
 	// Parse the additional arguments
 
-	// We need to know the mode in order to properly parse the rest of the arguments
-	if (m_arguments.size() >= 4) {
-		mode = m_arguments[3];
-	}
+	std::string mode = m_arguments[3];
 
 	bool ret = false;
 	if (mode == std::string("eeprom")) {
