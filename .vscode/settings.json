@@ -59,6 +59,7 @@
         "iomanip": "cpp",
         "valarray": "cpp",
         "list": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "hash_map": "cpp"
     }
 }

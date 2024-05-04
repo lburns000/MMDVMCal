@@ -131,28 +131,28 @@ unsigned char CEEPROMData::readCRC8VHF()
 
 int CEEPROMData::setRxOffsetVHF(int freq)
 {
-	m_rxOffsetVHF = freq;
+	m_rxOffsetVHF = sanitizeOffsetInput(freq);
 
 	return 0;
 }
 
 int CEEPROMData::setTxOffsetVHF(int freq)
 {
-	m_txOffsetVHF = freq;
+	m_txOffsetVHF = sanitizeOffsetInput(freq);
 
 	return 0;
 }
 
 int CEEPROMData::setRxOffsetUHF(int freq)
 {
-	m_rxOffsetUHF = freq;
+	m_rxOffsetUHF = sanitizeOffsetInput(freq);
 
 	return 0;
 }
 
 int CEEPROMData::setTxOffsetUHF(int freq)
 {
-	m_txOffsetUHF = freq;
+	m_txOffsetUHF = sanitizeOffsetInput(freq);
 
 	return 0;
 }
@@ -329,6 +329,19 @@ int CEEPROMData::writeInt(int data, int addr, unsigned int timeout)
 	m_EEPROM->eeprom_write(addr, &n1, 1, 10);			// MSB
 	m_EEPROM->eeprom_write(addr+1, &n0, 1, 10);			// LSB
 
+	return 0;
+}
+
+int CEEPROMData::sanitizeOffsetInput(int freq)
+{
+    // TODO: Establish acceptable range for offsets - for now use +-1500 Hz
+
+	if (freq >= -1500 && freq <= 1500)
+		return freq;
+	if (freq < -1500)
+		return -1500;
+	if (freq > 1500)
+		return 1500;
 	return 0;
 }
 

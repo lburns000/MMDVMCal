@@ -51,6 +51,7 @@ private:
 	unsigned char crc8(unsigned char *data, unsigned int length);	// Based on code from https://github.com/bxparks/AceCRC
 	int readInt(int addr);
 	int writeInt(int data, int addr, unsigned int timeout);
+	int sanitizeOffsetInput(int freq);
 
 	const unsigned int 	m_signature = 0x5a0f;
 	int 				m_txOffsetUHF;

@@ -2825,8 +2825,6 @@ bool CMMDVMCal::runOnceRadio()
 	if (m_arguments.size() < 5)
 		return false;
 
-	// TODO: Break this into smaller functions to clean this up
-
 	std::string mode = m_arguments[3];
 	std::string operation = m_arguments[4];
 	//unsigned int ms = 0U;
@@ -2893,11 +2891,10 @@ bool CMMDVMCal::runOnceEEPROM()
 		}
 		
 		::fprintf(stdout, "Writing EEPROM..." EOL);
-		// Write EEPROM
-		return true;
+		return runOnceEEPROMWrite();
 	}
 	else if (operation == "init") {		
-		::fprintf(stdout, "Initializing EEPROM..." EOL);
+		//::fprintf(stdout, "Initializing EEPROM..." EOL);
 		// Initialize EEPROM
 		return EEPROMInitialize();
 	}
@@ -2907,7 +2904,7 @@ bool CMMDVMCal::runOnceEEPROM()
 
 bool CMMDVMCal::runOnceDStar()
 {
-	::fprintf(stdout, "DStar functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended DStar functionality is not implemented yet." EOL);
     return true;
 }
 
@@ -3018,31 +3015,31 @@ bool CMMDVMCal::runOnceDMR()
 
 bool CMMDVMCal::runOnceYSF()
 {
-	::fprintf(stdout, "YSF functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended YSF functionality is not implemented yet." EOL);
     return true;
 }
 
 bool CMMDVMCal::runOnceP25()
 {
-	::fprintf(stdout, "P25 functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended P25 functionality is not implemented yet." EOL);
     return true;
 }
 
 bool CMMDVMCal::runOnceNXDN()
 {
-	::fprintf(stdout, "NXDN functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended NXDN functionality is not implemented yet." EOL);
     return true;
 }
 
 bool CMMDVMCal::runOnceM17()
 {
-	::fprintf(stdout, "M17 functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended M17 functionality is not implemented yet." EOL);
     return true;
 }
 
 bool CMMDVMCal::runOncePOCSAG()
 {
-	::fprintf(stdout, "POCSAG functionality is not implemented yet." EOL);
+	::fprintf(stdout, "Unattended POCSAG functionality is not implemented yet." EOL);
     return true;
 }
 
@@ -3101,28 +3098,40 @@ bool CMMDVMCal::runOnceEEPROMWrite()
 	std::string writeObject = m_arguments[5];
 	std::string writeObjectSpecifier = m_arguments[6];
 	std::string writeObjectValue = m_arguments[7];
+	int offsetValue = 0;
+	
+	try {
+		offsetValue = std::stoi(writeObjectValue);
+	}
+	catch (...) {
+		::fprintf(stdout, "Invalid value for offset." EOL);
+		return false;
+	}
 
 	if (writeObject == "vhf") {
 		if (writeObjectSpecifier == "tx") {
-			m_eepromData->setTxOffsetVHF(std::stoi(writeObjectValue));
+			::fprintf(stdout, "Writing offset of %d to VHF Tx..." EOL, offsetValue);
+			m_eepromData->setTxOffsetVHF(offsetValue);
 			m_eepromData->writeOffsetData();
 			return true;
 		}
 		if (writeObjectSpecifier == "rx") {
-			m_eepromData->setRxOffsetVHF(std::stoi(writeObjectValue));
+			::fprintf(stdout, "Writing offset of %d to VHF Rx..." EOL, offsetValue);
+			m_eepromData->setRxOffsetVHF(offsetValue);
 			m_eepromData->writeOffsetData();
 			return true;
 		}
 	}
-
 	if (writeObject == "uhf") {
 		if (writeObjectSpecifier == "tx") {
-			m_eepromData->setTxOffsetUHF(std::stoi(writeObjectValue));
+			::fprintf(stdout, "Writing offset of %d to UHF Tx..." EOL, offsetValue);
+			m_eepromData->setTxOffsetUHF(offsetValue);
 			m_eepromData->writeOffsetData();
 			return true;
 		}
 		if (writeObjectSpecifier == "rx") {
-			m_eepromData->setRxOffsetUHF(std::stoi(writeObjectValue));
+			::fprintf(stdout, "Writing offset of %d to UHF Rx..." EOL, offsetValue);
+			m_eepromData->setRxOffsetUHF(offsetValue);
 			m_eepromData->writeOffsetData();
 			return true;
 		}
