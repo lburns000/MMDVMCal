@@ -81,6 +81,16 @@ enum MMDVM_STATE {
   STATE_M17CAL    = 108
 };
 
+enum BER_TEST_TYPE {
+	BTT_DSTAR  = 0,
+	BTT_DMR    = 1,
+	BTT_YSF    = 2,
+	BTT_P25    = 3,
+	BTT_NXDN   = 4,
+	BTT_POCSAG = 5,
+	BTT_M17    = 6
+};
+
 class CMMDVMCal {
 public:
 	CMMDVMCal(const std::string& port, SERIAL_SPEED speed);
@@ -151,6 +161,7 @@ private:
 	CTimer						m_freqSweepTimer;
 	CJSONData                   m_jsonData;
 	CJSONFile                   m_jsonFile;
+	BER_TEST_TYPE               m_berTestType;
 
 	void displayHelp_MMDVM();
 	void displayHelp_MMDVM_HS();

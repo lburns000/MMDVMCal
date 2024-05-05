@@ -120,6 +120,8 @@ int main(int argc, char** argv)
 		return cal.run();
 	}
 	else {
+		// There are more than 3 arguments, run in unattended mode
+		
 		// Debug text
 		::fprintf(stdout, "Running unattended..." EOL);
 
@@ -190,7 +192,8 @@ m_interactive(true),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
 m_jsonData(),
-m_jsonFile("EEPROM.json", &m_jsonData)
+m_jsonFile("EEPROM.json", &m_jsonData),
+m_berTestType(BTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -293,7 +296,8 @@ m_arguments(args),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
 m_jsonData(),
-m_jsonFile("EEPROM.json", &m_jsonData)
+m_jsonFile("EEPROM.json", &m_jsonData),
+m_berTestType(BTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -543,7 +547,9 @@ void CMMDVMCal::loop_MMDVM()
 
 void CMMDVMCal::runOnce_MMDVM()
 {
-	
+	assert(m_arguments.size() >= 4);
+
+	// TODO: Unattended operations for MMDVM FW
 }
 
 void CMMDVMCal::displayHelp_MMDVM()
@@ -710,6 +716,7 @@ void CMMDVMCal::loop_MMDVM_HS()
 				setPOCSAGCal();
 				break;
 			case 'S':
+				m_berTestType = BTT_DMR;
 				setFreqSweep();
 				break;
 			case 's':
@@ -2364,12 +2371,45 @@ void CMMDVMCal::sleep(unsigned int ms)
 
 bool CMMDVMCal::setFreqSweep()
 {
-	::fprintf(stdout, "Performing DMR BER test for optimal Rx Offset..." EOL);
 	::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
 	// Pause to allow user to key up their radio and for it to stabilize
 	sleep(1000U);
 	setFreqValue(m_startfrequency, false);
-	setDMRBER_FEC();
+
+	switch (m_berTestType) {
+		case BTT_DSTAR:
+			::fprintf(stdout, "Starting D-Star BER test for optimal Rx Offset..." EOL);
+			setDSTARBER_FEC();
+			break;
+		case BTT_DMR:
+			::fprintf(stdout, "Starting DMR BER test for optimal Rx Offset..." EOL);
+			setDMRBER_FEC();
+			break;
+		case BTT_YSF:
+			::fprintf(stdout, "Starting YSF BER test for optimal Rx Offset..." EOL);
+			setYSFBER_FEC();
+			break;
+		case BTT_P25:
+			::fprintf(stdout, "Starting P25 BER test for optimal Rx Offset..." EOL);
+			setP25BER_FEC();
+			break;
+		case BTT_NXDN:
+			::fprintf(stdout, "Starting NXDN BER test for optimal Rx Offset..." EOL);
+			setNXDNBER_FEC();
+			break;
+		case BTT_POCSAG:
+			::fprintf(stdout, "No POCSAG BER test available." EOL);
+			return false;
+		case BTT_M17:
+			::fprintf(stdout, "No M17 BER test available." EOL);
+			return false;
+		default:
+			::fprintf(stdout, "Unknown BER test specified." EOL);
+			return false;
+	}
+
+	
+
 
 	m_tmpBER = 0.0f;
 	m_tmpBERTotal = 0.0f;
@@ -2965,6 +3005,7 @@ bool CMMDVMCal::runOnceDMR()
 		CTimer durationTimer(1000, duration);
 		CStopWatch stopWatch;
 		::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
+		m_berTestType = BTT_DMR;
 		setDMRBER_FEC();
 		stopWatch.start();
 		durationTimer.start();
@@ -3008,7 +3049,10 @@ bool CMMDVMCal::runOnceDMR()
 		stopWatch.start();
 
 		// Do autocal
-		setFreqSweep();
+		m_berTestType = BTT_DMR;
+		if (!setFreqSweep())
+			return true;
+
 		while (m_freqSweep) {
 			RESP_TYPE_MMDVM resp = getResponse();
 			if (resp == RTM_OK)
