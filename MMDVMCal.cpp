@@ -2987,7 +2987,13 @@ bool CMMDVMCal::runOnceDMR()
 	if (operation == "ber") {
 		// Check for additional frequency argument
 		if (m_arguments.size() >= 6) {
-			unsigned int newFreq = std::stoul(m_arguments[5]);
+			unsigned int newFreq;
+			try {
+				newFreq = std::stoul(m_arguments[5]);
+			}
+			catch(...) {
+				newFreq = 0U;
+			}
 			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
 			if (newFreq >= 100000000U && newFreq <= 999999999U) {
 				setFreqValue(newFreq, true);
@@ -3000,7 +3006,18 @@ bool CMMDVMCal::runOnceDMR()
 		// Need to start BER test and set a timer for specified time (if given) or 5s as a default
 		unsigned int duration = 5U;
 		if (m_arguments.size() >= 7) {
-			duration = std::stoul(m_arguments[6]);
+			try {
+				duration = std::stoul(m_arguments[6]);
+			}
+			catch(...) {
+				::fprintf(stdout, "Invalid duration, using default duration of 5s" EOL);
+				duration = 5U;
+			}
+			// Set a reasonable limit on duration value
+			if (duration > 30U) {
+				::fprintf(stdout, "Exceeded max value of duration, using max value of 30s." EOL);
+				duration = 30U;
+			}
 		}
 		CTimer durationTimer(1000, duration);
 		CStopWatch stopWatch;
@@ -3035,7 +3052,13 @@ bool CMMDVMCal::runOnceDMR()
 	else if (operation == "autocal") {
 		// Check for additional frequency argument
 		if (m_arguments.size() >= 6) {
-			unsigned int newFreq = std::stoul(m_arguments[5]);
+			unsigned int newFreq;
+			try {
+				newFreq = std::stoul(m_arguments[5]);
+			}
+			catch(...) {
+				newFreq = 0U;
+			}
 			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
 			if (newFreq >= 100000000U && newFreq <= 999999999U) {
 				setFreqValue(newFreq, true);
