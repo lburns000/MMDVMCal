@@ -380,9 +380,15 @@ int CMMDVMCal::run()
 
 void CMMDVMCal::loop_MMDVM()
 {
+	unsigned int ms = 0U;
+	CStopWatch stopWatch;
+	stopWatch.start();
+
+	m_statusTimer.start();
+	
 	displayHelp_MMDVM();
 
-	unsigned int counter = 0U;
+	//unsigned int counter = 0U;
 	bool end = false;
 	while (!end) {
 		int c = m_console.getChar();
@@ -511,16 +517,27 @@ void CMMDVMCal::loop_MMDVM()
 		if (resp == RTM_OK)
 			displayModem(m_buffer, m_length);
 
-		m_ber.clock(5U); // TODO: Update this to use a stopwatch
+		m_ber.clock(ms);
 		sleep(5U);
 
-		if (counter >= 200U) {
+		// if (counter >= 200U) {
+		// 	if (getStatus())
+		// 		displayModem(m_buffer, m_length);
+		// 	counter = 0U;
+		// }
+
+		if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
 			if (getStatus())
 				displayModem(m_buffer, m_length);
-			counter = 0U;
+			m_statusTimer.start();
 		}
 
-		counter++;
+		//counter++;
+
+		ms = stopWatch.elapsed();
+		stopWatch.start();
+
+		m_statusTimer.clock(ms);
 	}
 }
 
