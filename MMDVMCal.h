@@ -154,6 +154,7 @@ private:
 
 	void displayHelp_MMDVM();
 	void displayHelp_MMDVM_HS();
+	void displayHelp_Unattended();
 	void loop_MMDVM();
 	void runOnce_MMDVM();
 	void loop_MMDVM_HS();

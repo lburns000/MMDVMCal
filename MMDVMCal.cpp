@@ -764,14 +764,17 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 	if (mode == std::string("eeprom")) {
 		ret = runOnceEEPROM();
 		if (!ret) {
-			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> eeprom <check|init|read|write> [additional specifiers - see documentation]" EOL, m_arguments[0].c_str());
+			// ::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> eeprom <check|init|read|write> [additional specifiers - see documentation]" EOL, 
+			// 	m_arguments[0].c_str());
+			displayHelp_Unattended();
 			return;
 		}
 	}
 	else {
 		ret = runOnceRadio();
 		if (!ret) {
-			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, m_arguments[0].c_str());
+			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, 
+				m_arguments[0].c_str());
 			return;
 		}
 	}
@@ -817,6 +820,20 @@ void CMMDVMCal::displayHelp_MMDVM_HS()
 	::fprintf(stdout, "    u        Write current offset to MMDVMHost configuration file Rx offset (duplex)" EOL);
 	::fprintf(stdout, "    v        Write current offset to MMDVMHost configuration file Tx offset (duplex)" EOL);
 	::fprintf(stdout, "    E        Write stored EEPROM calibration data to MMDVMHost configuration file" EOL);
+	::fprintf(stdout, EOL);
+}
+
+void CMMDVMCal::displayHelp_Unattended()
+{
+	assert(m_arguments.size() > 0);
+
+	::fprintf(stdout, "Non-Interactive Mode Usage" EOL);
+	::fprintf(stdout, "Modem Operations: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "EEPROM Operations:" EOL);
+	::fprintf(stdout, "    Check for onboard EEPROM: %s <speed> <port> eeprom check" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Initialize EEPROM:        %s <speed> <port> eeprom init" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Read EEPROM:              %s <speed> <port> eeprom read <vhf|uhf> <tx|rx>" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Write EEPROM:             %s <speed> <port> eeprom write <vhf|uhf> <tx|rx> <offset>" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, EOL);
 }
 
