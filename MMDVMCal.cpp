@@ -785,23 +785,29 @@ void CMMDVMCal::runOnce_MMDVM_HS()
 	std::string mode = m_arguments[3];
 
 	bool ret = false;
-	if (mode == std::string("eeprom")) {
+	if (mode == "eeprom") {
 		ret = runOnceEEPROM();
-		if (!ret) {
+		// if (!ret) {
 			// ::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> eeprom <check|init|read|write> [additional specifiers - see documentation]" EOL, 
 			// 	m_arguments[0].c_str());
-			displayHelp_Unattended();
-			return;
-		}
+			// displayHelp_Unattended();
+			// return;
+		// }
+	}
+	else if (mode == "json") {
+		ret = runOnceJSON();
 	}
 	else {
 		ret = runOnceRadio();
-		if (!ret) {
-			::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, 
-				m_arguments[0].c_str());
-			return;
-		}
+		// if (!ret) {
+		// 	::fprintf(stdout, "Invalid input - Usage: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, 
+		// 		m_arguments[0].c_str());
+		// 	return;
+		// }
 	}
+
+	if (!ret)
+		displayHelp_Unattended();
 }
 
 void CMMDVMCal::displayHelp_MMDVM_HS()
@@ -858,6 +864,11 @@ void CMMDVMCal::displayHelp_Unattended()
 	::fprintf(stdout, "    Initialize EEPROM:        %s <speed> <port> eeprom init" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "    Read EEPROM:              %s <speed> <port> eeprom read <vhf|uhf> <tx|rx>" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "    Write EEPROM:             %s <speed> <port> eeprom write <vhf|uhf> <tx|rx> <offset>" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "JSON file Operations:" EOL);
+	::fprintf(stdout, "    Check for JSON file on disk:          %s <speed> <port> json check [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Initialize JSON file:                 %s <speed> <port> json init [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Read JSON file:                       %s <speed> <port> json read [eeprom] [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Overwrite JSON file with EEPROM data: %s <speed> <port> json write [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, EOL);
 }
 
@@ -2965,6 +2976,37 @@ bool CMMDVMCal::runOnceEEPROM()
 		//::fprintf(stdout, "Initializing EEPROM..." EOL);
 		// Initialize EEPROM
 		return EEPROMInitialize();
+	}
+
+    return false;
+}
+
+bool CMMDVMCal::runOnceJSON()
+{
+	if (m_arguments.size() < 5)
+		return false;
+
+	std::string operation = m_arguments[4];
+
+	if (operation == "check") {
+		// Check for existence of the JSON file representing EEPROM data
+
+		return true;
+	}
+	else if (operation == "init") {
+		// Initialize JSON file representing EEPROM data to default values
+
+		return true;
+	}
+	else if (operation == "read") {
+		// Display contents of JSON file to stdout
+
+		return true;
+	}
+	else if (operation == "write") {
+		// Write contents of EEPROM data into JSON file
+
+		return true;
 	}
 
     return false;

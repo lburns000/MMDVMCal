@@ -223,7 +223,8 @@ private:
 	bool writeEEPROMOffsetsConfig();							// Write offsets stored in EEPROM to MMDVMHost config file
 
 	bool runOnceRadio();										// Run once to do a radio operation
-	bool runOnceEEPROM();										// Run once to do an EEPROM operation
+	bool runOnceEEPROM();										// Run once to do an operation directly on EEPROM
+	bool runOnceJSON();                                         // Run once to do an operation on JSON file representing EEPROM data
 	bool runOnceDStar();										// runOnceRadio() will call this
 	bool runOnceDMR();											// runOnceRadio() will call this
 	bool runOnceYSF();											// runOnceRadio() will call this
