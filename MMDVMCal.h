@@ -236,6 +236,7 @@ private:
 	bool runOnceEEPROMWrite();									// runOnceEEPROM() will call this
 	bool runOnceJSONRead();                                     // runOnceJSON() will call this
 	bool runOnceJSONWrite();                                    // runOnceJSON() will call this
+	bool openJSONFile(const std::string& filename);
 
 	bool initModem();
 	void displayModem(const unsigned char* buffer, unsigned int length);

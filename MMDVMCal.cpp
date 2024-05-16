@@ -3334,15 +3334,9 @@ bool CMMDVMCal::runOnceJSONRead()
 		}
 
 		// Open json file
-		if (m_jsonData == nullptr)
-			m_jsonData = new CJSONData();
-
-		m_jsonData->getDataFromFile(jsonFilePath);
-			
-		if (!m_jsonData->isValid()) {
-			::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+		if (!openJSONFile(jsonFilePath))
 			return true;
-		}
+
 		// Read data from json file and write into eeprom
 		m_eepromData->setRxOffsetVHF(m_jsonData->getRxOffsetVHF());
 		m_eepromData->setTxOffsetVHF(m_jsonData->getTxOffsetVHF());
@@ -3357,15 +3351,8 @@ bool CMMDVMCal::runOnceJSONRead()
 			jsonFilePath = m_arguments[6];
 		}
 
-		if (m_jsonData == nullptr)
-			m_jsonData = new CJSONData();
-
-		m_jsonData->getDataFromFile(jsonFilePath);
-		
-		if (!m_jsonData->isValid()) {
-			::fprintf(stderr, "Error reading JSON data from file %s" EOL, jsonFilePath.c_str());
+		if (!openJSONFile(jsonFilePath))
 			return true;
-		}
 
 		int uhfRxOffset = m_jsonData->getRxOffsetUHF();
 		int uhfTxOffset = m_jsonData->getTxOffsetUHF();
@@ -3385,15 +3372,8 @@ bool CMMDVMCal::runOnceJSONRead()
 	if (m_arguments.size() > 7)
 		jsonFilePath = m_arguments[7];
 
-	if (m_jsonData == nullptr)
-		m_jsonData = new CJSONData();
-
-	m_jsonData->getDataFromFile(jsonFilePath);
-		
-	if (!m_jsonData->isValid()) {
-		::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+	if (!openJSONFile(jsonFilePath))
 		return true;
-	}
 
 	if (readObject == "vhf") {
 		if (readObjectSpecifier == "tx") {
@@ -3447,15 +3427,9 @@ bool CMMDVMCal::runOnceJSONWrite()
 			return true;
 		}
 		// Open json file
-		if (m_jsonData == nullptr)
-			m_jsonData = new CJSONData();
-
-		m_jsonData->getDataFromFile(jsonFilePath);
-			
-		if (!m_jsonData->isValid()) {
-			::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+		if (!openJSONFile(jsonFilePath))
 			return true;
-		}
+
 		// Read data from eeprom and write into json file
 		m_jsonData->setRxOffsetVHF(m_eepromData->getRxOffsetVHF());
 		m_jsonData->setTxOffsetVHF(m_eepromData->getTxOffsetVHF());
@@ -3484,15 +3458,8 @@ bool CMMDVMCal::runOnceJSONWrite()
 	if (m_arguments.size() > 8)
 		jsonFilePath = m_arguments[8];
 
-	if (m_jsonData == nullptr)
-		m_jsonData = new CJSONData();
-
-	m_jsonData->getDataFromFile(jsonFilePath);
-		
-	if (!m_jsonData->isValid()) {
-		::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+	if (!openJSONFile(jsonFilePath))
 		return true;
-	}
 
 	if (readObject == "vhf") {
 		if (readObjectSpecifier == "rx") {
@@ -3528,6 +3495,21 @@ bool CMMDVMCal::runOnceJSONWrite()
 	}
 	
 	return false;
+}
+
+bool CMMDVMCal::openJSONFile(const std::string &filename)
+{
+	if (m_jsonData == nullptr)
+		m_jsonData = new CJSONData();
+
+	m_jsonData->getDataFromFile(filename);
+		
+	if (!m_jsonData->isValid()) {
+		::fprintf(stderr, "Invalid JSON data read from file %s" EOL, filename.c_str());
+		return false;
+	}
+
+    return true;
 }
 
 bool CMMDVMCal::writeCurrentTxOffsetConfig()
