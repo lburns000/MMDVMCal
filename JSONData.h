@@ -1,68 +1,80 @@
-/*
-    {
-        "offset": {
-            "vhfTx": "0",
-            "vhfRx": "0",
-            "uhfTx": "0",
-            "uhfRx": "0"
-        }
-    }
-
- */
-
 #if !defined(JSONDATA_H)
 #define	JSONDATA_H
 
-#include <nlohmann/json.hpp>
-#include <fstream>
+#include "JSONFile.h"
+#include <string>
 
+/**Handle the high-level data stored in JSON file.*/
 class CJSONData
 {
 public:
     CJSONData();
     ~CJSONData();
 
-    /**Set the value of a specific key within the specified section, creating it if it doesn't exist.*/
-    template<class S, class K, class V>
-    void setValue(const S& section, const K& key, const V& value);
+    /**Open specified file and read JSON data in it.*/
+    void getDataFromFile(const std::string& filename);
 
-    template <class S, class K, class V>
-    V getValue(const S& section, const K& key);
+    /**Open specified file creating it if it doesn't exist and reset all data in it 
+       to default values.*/
+    bool initializeFile(const std::string& filename);
 
-    /**Set the value of the whole data from a file.*/
-    void setData(std::fstream* file);
+    /**Return VHF Rx offset value*/
+	int getRxOffsetVHF();
 
-    /**Get the value of the whole data and store in a file.*/
-    void getData(std::fstream* file);
+    /**Return VHF Tx offset value*/
+	int getTxOffsetVHF();
 
-    //void addValue(const std::string& section, const std::string& key, const std::string& value);
+    /**Return UHF Rx offset value*/
+	int getRxOffsetUHF();
 
-    /**Get the JSON data in raw format, suitable for parsing.*/
-    std::string getPlainString();
+    /**Return UHF Tx offset value*/
+	int getTxOffsetUHF();
 
-    /**Get the JSON data in a human-friendly format.*/
-    std::string getFormattedString();
+    /**Set VHF Rx offset value*/
+	void setRxOffsetVHF(int offset);
+
+    /**Set VHF Tx offset value*/
+	void setTxOffsetVHF(int offset);
+
+    /**Set UHF Rx offset value*/
+	void setRxOffsetUHF(int offset);
+
+    /**Set UHF Tx offset value*/
+	void setTxOffsetUHF(int offset);
+
+    /**If data is not valid, return false. Otherwise, store locally stored offset data into given 
+       integer references and return true.*/
+	bool readOffsetData(int &rxVHF, int &txVHF, int &rxUHF, int &txUHF);
+
+    /**Write locally stored offset data into JSON file*/
+	bool writeOffsetData();
+
+    // /**Get the JSON data in raw format, suitable for parsing.*/
+    // std::string getPlainString();
+
+    // /**Get the JSON data in a human-friendly format.*/
+    // std::string getFormattedString();
 
     /**Check if the data is valid.*/
     bool isValid() { return m_valid; }
 
 private:
+    /**Return true if file is open and its data is valid. Otherwise return false.*/
     bool checkData();
 
-    nlohmann::json m_data;
+    /**Set all offset values to zero.*/
+    void initializeOffsetValues();
+
+    /**Open the specified JSON file. If createNew is true, create the file if it doesn't exist. 
+       Return true if successful and file data is valid, otherwise, return false.*/
+    bool openFile(const std::string& filename, bool createNew = false);
+
     bool           m_valid;
+    CJSONFile*     m_file;
+    int            m_txOffsetUHF;
+    int            m_rxOffsetUHF;
+    int            m_txOffsetVHF;
+    int            m_rxOffsetVHF;
 };
-
-template <class S, class K, class V>
-inline void CJSONData::setValue(const S &section, const K &key, const V &value)
-{
-    m_data[section][key] = value;
-}
-
-template <class S, class K, class V>
-inline V CJSONData::getValue(const S& section, const K& key)
-{
-    return m_data[section][key];
-}
 
 #endif

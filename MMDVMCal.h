@@ -141,27 +141,27 @@ private:
 	const char		  m_freqOffsetText[10];
 	const char		  m_statusText[10];
 	// Below added for DMR BER Sweep Test
-	float		  	  			m_tmpBER;					// Instantaneous BER during freq sweep test
-	float		  	  			m_tmpBERTotal;				// Accumulated BER during freq sweep test
-	bool		  	  			m_freqSweep; 				// Are we performing the automated DMR BER test?
-	int 		  	  			m_tmpBERNum;				// Number of BER readings (used to find average BER for given time period)
-	int	  			  			m_tmpBERFreqOffsetMin;		// Minimum frequency with detectable BER
-	int	  			  			m_tmpBERFreqOffsetMax;		// Maximum frequency with detectable BER
-	int				  			m_tmpBERFreqDir;			// Direction of frequency sweep (-1 = decreasing, 0 = static, 1 = increasing)
-	int				  			m_tmpBERFreqOffset;			// Current offset from center frequency
-	int				  			m_tmpBERFreqOffsetFirst;	// The first offset that transmission was detected on (should be 0, but not guaranteed)
-	//unsigned int	  			m_freqSweepCounter;
-	const int		  			m_freqSweepMin;				// Minimum frequency below center that frequency sweep will go
-	const int		  			m_freqSweepMax;				// Maximum frequency above center that frequency sweep will go
-	int				  			m_freqSweepTestResultLast;	// The last test result for optimal DMR Rx offset
-	bool			  			m_freqSweepTestTaken;		// If no sweep test has been done, we don't have valid data to write to EEPROM
-	bool			  			m_interactive;				// Whether or not to run with interactive console vs. one-liner command
-	std::vector<std::string> 	m_arguments;				// Arguments passed to the program
-	CTimer						m_statusTimer;
-	CTimer						m_freqSweepTimer;
-	CJSONData                   m_jsonData;
-	CJSONFile                   m_jsonFile;
-	BER_TEST_TYPE               m_berTestType;
+	float		  	  			 m_tmpBER;					// Instantaneous BER during freq sweep test
+	float		  	  			 m_tmpBERTotal;				// Accumulated BER during freq sweep test
+	bool		  	  			 m_freqSweep; 				// Are we performing the automated DMR BER test?
+	int 		  	  			 m_tmpBERNum;				// Number of BER readings (used to find average BER for given time period)
+	int	  			  			 m_tmpBERFreqOffsetMin;		// Minimum frequency with detectable BER
+	int	  			  			 m_tmpBERFreqOffsetMax;		// Maximum frequency with detectable BER
+	int				  			 m_tmpBERFreqDir;			// Direction of frequency sweep (-1 = decreasing, 0 = static, 1 = increasing)
+	int				  			 m_tmpBERFreqOffset;			// Current offset from center frequency
+	int				  			 m_tmpBERFreqOffsetFirst;	// The first offset that transmission was detected on (should be 0, but not guaranteed)
+	//unsigned int	  			 m_freqSweepCounter;
+	const int		  			 m_freqSweepMin;				// Minimum frequency below center that frequency sweep will go
+	const int		  			 m_freqSweepMax;				// Maximum frequency above center that frequency sweep will go
+	int				  			 m_freqSweepTestResultLast;	// The last test result for optimal DMR Rx offset
+	bool			  			 m_freqSweepTestTaken;		// If no sweep test has been done, we don't have valid data to write to EEPROM
+	bool			  			 m_interactive;				// Whether or not to run with interactive console vs. one-liner command
+	std::vector<std::string> 	 m_arguments;				// Arguments passed to the program
+	CTimer						 m_statusTimer;
+	CTimer						 m_freqSweepTimer;
+	CJSONData*                   m_jsonData;
+	// CJSONFile*                   m_jsonFile;
+	BER_TEST_TYPE                m_berTestType;
 
 	void displayHelp_MMDVM();
 	void displayHelp_MMDVM_HS();

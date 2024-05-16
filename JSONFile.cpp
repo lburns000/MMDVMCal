@@ -1,96 +1,114 @@
 #include "JSONFile.h"
 
-CJSONFile::CJSONFile(const std::string &filename, CJSONData *jsonData) :
+CJSONFile::CJSONFile(const std::string &filename, bool createNew) :
 m_filename(filename),
-m_file(nullptr),
-m_jsonData(jsonData),
+m_file(),
+m_data(),
 m_valid(false)
 {
-    if (jsonData == nullptr) {
+    // Attempt to open the file
+    if (!open(createNew))
         return;
-    }
 
-    if (!open()) {
+    // Don't read the file if there's no data in it
+    if (createNew)
         return;
-    }
 
-    // if (!read()) {
-    //     m_file.close();
-    //     return;
-    // }
+    // Read the file
+    if (!read())
+        return;
+
+    m_valid = true;
 }
 
 CJSONFile::~CJSONFile()
 {
     close();
-    if (m_file != nullptr) {
-        delete m_file;
-    }
 }
 
 bool CJSONFile::read()
 {
-    if (!m_file->is_open()) {
+    if (!m_file.is_open()) {
         ::fprintf(stdout, "CJSONFile::read(): File is not open. Returning false.\n");
         return false;
     }
 
-    ::fprintf(stdout, "CJSONFile::read(): Setting JSON data...\n");
-    m_jsonData->setData(m_file);
+    close();
+    
+    if (!open(false))
+        return false;
 
+    // ::fprintf(stdout, "CJSONFile::read(): Setting JSON data...\n");
+    try {
+        m_file >> m_data;
+    }
+    catch (...) {
+        ::fprintf(stderr, "CJSONFile::read(): Error reading data from file.\n");
+        return false;
+    }
 
-    m_valid = true;
-    return true;
+    return checkData();
 }
 
 bool CJSONFile::write()
 {
-    if (!m_file->is_open()) {
+    // If not creating a new file, it should be open already
+    if (!m_file.is_open()) {
         return false;
     }
 
-    m_jsonData->getData(m_file);
+    // Close the file and reopen it in overwrite mode
+    if (m_file.is_open())
+        m_file.close();
+    
+    if (!open(true))
+        return false;
+
+    m_file << m_data.dump(4) << std::flush;
+    // m_file << m_data; // << std::flush;
 
     return true;
 }
 
-bool CJSONFile::open()
+bool CJSONFile::setOffsetValue(const std::string& key, int value)
 {
-    //::fprintf(stdout, "Attempting to open EEPROM.json.\n");
-    m_file = new std::fstream;
-    m_file->open(m_filename, std::ios::in | std::ios::out);
-    if (m_file->is_open()) {
-        //::fprintf(stdout, "EEPROM.json opened successfully! Getting the data from it...\n");
-        m_jsonData->setData(m_file);
+    if ((key == "UhfTx") || (key == "UhfRx") || (key == "VhfTx") || (key == "VhfRx")) {
+        setValue<const std::string&, const std::string&, int>("Offset", key, value);
         return true;
     }
+    
+    return false;
+}
 
-    ::fprintf(stdout, "EEPROM.json did not open, attempting to create file...\n");
-
-    // Create the file if it doesn't exist
-    std::fstream newFile;
-    newFile.open(m_filename, std::ios::out | std::ios::trunc);
-    if (!newFile.is_open()) {
-        ::fprintf(stderr, "Error creating EEPROM.json.\n");
-        return false;
+int CJSONFile::getOffsetValue(const std::string &key)
+{
+    if ((key == "UhfTx") || (key == "UhfRx") || (key == "VhfTx") || (key == "VhfRx")) {
+        int offset = getValue<const std::string&, const std::string&, int>("Offset", key);
+        return offset;
     }
 
-    ::fprintf(stdout, "EEPROM.json successfully created. Setting JSON data to default values...\n");
-    m_jsonData->setValue("Offset", "VhfTx", 0);
-    m_jsonData->setValue("Offset", "VhfRx", 0);
-    m_jsonData->setValue("Offset", "UhfTx", 0);
-    m_jsonData->setValue("Offset", "UhfRx", 0);
+    return 0;
+}
 
-    ::fprintf(stdout, "Writing JSON data to file...\n");
-    m_jsonData->getData(&newFile);
+std::string CJSONFile::getPlainString()
+{
+    return m_data.dump();
+}
 
-    // Reopen the file in r/w mode
-    newFile.close();
+std::string CJSONFile::getFormattedString()
+{
+    return m_data.dump(4);
+}
 
-    ::fprintf(stdout, "Reopening EEPROM.json in r/w mode...\n");
-    m_file->open(m_filename, std::ios::in | std::ios::out);
-    if (!m_file->is_open()) {
-        ::fprintf(stdout, "Error reopening EEPROM.json.\n");
+bool CJSONFile::open(bool overwrite)
+{
+    //::fprintf(stdout, "Attempting to open EEPROM.json.\n");
+    if (overwrite)
+        m_file.open(m_filename, std::ios::out | std::ios::trunc);
+    else
+        m_file.open(m_filename, std::ios::in);
+
+    if (!m_file.is_open()) {
         return false;
     }
 
@@ -99,7 +117,57 @@ bool CJSONFile::open()
 
 void CJSONFile::close()
 {
-    if (m_file->is_open()) {
-        m_file->close();
+    if (m_file.is_open())
+        m_file.close();
+
+    m_data.clear();
+}
+
+bool CJSONFile::checkData()
+{
+    try
+    {
+        if (!m_data["Offset"]["UhfTx"].is_number_integer())
+            return false;
     }
+    catch (std::exception &e)
+    {
+        ::fprintf(stdout, "Error reading UHF Tx offset: %s\n", e.what());
+        return false;
+    }
+
+    try
+    {
+        if (!m_data["Offset"]["UhfRx"].is_number_integer())
+            return false;
+    }
+    catch (std::exception &e)
+    {
+        ::fprintf(stdout, "Error reading UHF Rx offset: %s\n", e.what());
+        return false;
+    }
+
+    try
+    {
+        if (!m_data["Offset"]["VhfTx"].is_number_integer())
+            return false;
+    }
+    catch (std::exception &e)
+    {
+        ::fprintf(stdout, "Error reading VHF Tx offset: %s\n", e.what());
+        return false;
+    }
+
+    try
+    {
+        if (!m_data["Offset"]["VhfRx"].is_number_integer())
+            return false;
+    }
+    catch (std::exception &e)
+    {
+        ::fprintf(stdout, "Error reading VHF Rx offset: %s\n", e.what());
+        return false;
+    }
+
+    return true;
 }

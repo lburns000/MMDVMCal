@@ -3,98 +3,148 @@
 #include <iostream>
 
 CJSONData::CJSONData() :
-m_data(),
-m_valid(false)
+m_valid(false),
+m_file(nullptr),
+m_txOffsetUHF(0),
+m_rxOffsetUHF(0),
+m_txOffsetVHF(0),
+m_rxOffsetVHF(0)
 {
 }
 
 CJSONData::~CJSONData()
 {
+    if (m_file != nullptr) {
+        delete m_file;
+    }
 }
 
-// void CJSONData::addValue(const std::string &section, const std::string &key, const std::string &value)
-// {
-//     assert(section.size() > 0);
-//     assert(key.size() > 0);
-//     assert(value.size() > 0);
+void CJSONData::getDataFromFile(const std::string &filename)
+{
+    if (!openFile(filename))
+        return;
 
-//     m_data[section][key] = value;
+    m_txOffsetUHF = m_file->getOffsetValue("UhfTx");
+    m_rxOffsetUHF = m_file->getOffsetValue("UhfRx");
+    m_txOffsetVHF = m_file->getOffsetValue("VhfTx");
+    m_rxOffsetVHF = m_file->getOffsetValue("VhfRx");
+
+    m_valid = true;
+}
+
+bool CJSONData::initializeFile(const std::string &filename)
+{
+    initializeOffsetValues();
+
+    if (!openFile(filename, true))
+        return false;
+
+    return writeOffsetData();
+}
+
+int CJSONData::getRxOffsetVHF()
+{
+    return m_rxOffsetVHF;
+}
+
+int CJSONData::getTxOffsetVHF()
+{
+    return m_txOffsetVHF;
+}
+
+int CJSONData::getRxOffsetUHF()
+{
+    return m_rxOffsetUHF;
+}
+
+int CJSONData::getTxOffsetUHF()
+{
+    return m_txOffsetUHF;
+}
+
+void CJSONData::setRxOffsetVHF(int offset)
+{
+    m_rxOffsetVHF = offset;
+}
+
+void CJSONData::setTxOffsetVHF(int offset)
+{
+    m_txOffsetVHF = offset;
+}
+
+void CJSONData::setRxOffsetUHF(int offset)
+{
+    m_rxOffsetUHF = offset;
+}
+
+void CJSONData::setTxOffsetUHF(int offset)
+{
+    m_txOffsetUHF = offset;
+}
+
+bool CJSONData::readOffsetData(int &rxVHF, int &txVHF, int &rxUHF, int &txUHF)
+{
+    if (!m_valid)
+        return false;
+
+    rxVHF = m_rxOffsetVHF;
+    txVHF = m_txOffsetVHF;
+    rxUHF = m_rxOffsetUHF;
+    txUHF = m_txOffsetUHF;
+
+    return true;
+}
+
+// std::string CJSONData::getPlainString()
+// {
+//     return m_file->getPlainString();
 // }
 
-void CJSONData::setData(std::fstream* file)
-{
-    *file >> m_data;
-    m_valid = checkData();
-    //std::cout << "CJSONData::setData(): Printing data from file: ";
-    //std::cout << m_data << std::endl;
-}
+// std::string CJSONData::getFormattedString()
+// {
+//     return m_file->getFormattedString();
+// }
 
-void CJSONData::getData(std::fstream* file)
+bool CJSONData::writeOffsetData()
 {
-    *file << m_data.dump(4) << std::flush;
-}
+    if (m_file == nullptr)
+        return false;
+    
+    m_file->setOffsetValue("UhfTx", m_txOffsetUHF);
+    m_file->setOffsetValue("UhfRx", m_rxOffsetUHF);
+    m_file->setOffsetValue("VhfTx", m_txOffsetVHF);
+    m_file->setOffsetValue("VhfRx", m_rxOffsetVHF);
 
-std::string CJSONData::getPlainString()
-{
-    return m_data.dump();
-}
-
-std::string CJSONData::getFormattedString()
-{
-    return m_data.dump(4);
+    return m_file->write();
 }
 
 bool CJSONData::checkData()
 {
-    try
-    {
-        int uhfTx = getValue<std::string, std::string, int>("Offset", "UhfTx");
-        
-        if (!m_data["Offset"]["UhfTx"].is_number_integer())
-            return false;
-    }
-    catch (std::exception &e)
-    {
-        ::fprintf(stdout, "Error reading UHF Tx offset: %s\n", e.what());
+    if (m_file == nullptr)
         return false;
-    }
 
-    try
-    {
-        int uhfRx = getValue<std::string, std::string, int>("Offset", "UhfRx");
+    return m_file->isValid();
+}
 
-        if (!m_data["Offset"]["UhfRx"].is_number_integer())
-            return false;
-    }
-    catch (std::exception &e)
-    {
-        ::fprintf(stdout, "Error reading UHF Rx offset: %s\n", e.what());
-        return false;
-    }
+void CJSONData::initializeOffsetValues()
+{
+    m_rxOffsetUHF = 0;
+    m_txOffsetUHF = 0;
+    m_rxOffsetVHF = 0;
+    m_txOffsetVHF = 0;
+}
 
-    try
-    {
-        int vhfTx = getValue<std::string, std::string, int>("Offset", "VhfTx");
+bool CJSONData::openFile(const std::string &filename, bool createNew)
+{
+    // Be sure we're working with a new file
+    if (m_file != nullptr)
+        delete m_file;
 
-        if (!m_data["Offset"]["VhfTx"].is_number_integer())
-            return false;
-    }
-    catch (std::exception &e)
-    {
-        ::fprintf(stdout, "Error reading VHF Tx offset: %s\n", e.what());
-        return false;
-    }
+    // Open a new file
+    m_file = new CJSONFile(filename, createNew);
 
-    try
-    {
-        int vhfRx = getValue<std::string, std::string, int>("Offset", "VhfRx");
-
-        if (!m_data["Offset"]["VhfRx"].is_number_integer())
-            return false;
-    }
-    catch (std::exception &e)
-    {
-        ::fprintf(stdout, "Error reading VHF Rx offset: %s\n", e.what());
+    if (!createNew && !m_file->isValid()) {
+        m_valid = false;
         return false;
     }
 

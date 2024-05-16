@@ -97,6 +97,8 @@ const unsigned int BUFFER_LENGTH = 2000U;
 
 const unsigned char MMDVM_SERIAL_DATA = 0x80U;
 
+// #define JSON_DEBUG
+
 int main(int argc, char** argv)
 {
 	if (argc < 3) {
@@ -191,15 +193,16 @@ m_freqSweepTestTaken(false),
 m_interactive(true),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
-m_jsonData(),
-m_jsonFile("EEPROM.json", &m_jsonData),
+m_jsonData(nullptr),
+// m_jsonFile(nullptr),
 m_berTestType(BTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
 	
-
+#ifdef JSON_DEBUG
 	// Debug
+	m_jsonFile = new CJSONFile("eeprom.json", &m_jsonData);
 	::fprintf(stdout, "JSON file data is %svalid." EOL, m_jsonData.isValid() ? "" : "not ");
 
 	int uhfTx = 0;
@@ -238,6 +241,9 @@ m_berTestType(BTT_DSTAR)
 			::fprintf(stdout, "Mismatch between EEPROM and JSON file data." EOL);
 		}
 	}
+
+	delete m_jsonFile;
+#endif
 }
 
 CMMDVMCal::CMMDVMCal(const std::string &port, SERIAL_SPEED speed, const std::vector<std::string>& args) :
@@ -295,8 +301,8 @@ m_interactive(false),
 m_arguments(args),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
-m_jsonData(),
-m_jsonFile("EEPROM.json", &m_jsonData),
+m_jsonData(nullptr),
+// m_jsonFile(nullptr),
 m_berTestType(BTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
@@ -378,6 +384,12 @@ int CMMDVMCal::run()
 	}
 
 	delete m_eepromData;
+
+	if (m_jsonData != nullptr)
+		delete m_jsonData;
+
+	// if (m_jsonFile != nullptr)
+	// 	delete m_jsonFile;
 
 	return 0;
 }
@@ -860,10 +872,12 @@ void CMMDVMCal::displayHelp_Unattended()
 	::fprintf(stdout, "Non-Interactive Mode Usage" EOL);
 	::fprintf(stdout, "Modem Operations: %s <speed> <port> <dstar|dmr|ysf|p25|nxdn|m17|pocsag> <ber|autocal> [frequency] [duration]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "EEPROM Operations:" EOL);
-	::fprintf(stdout, "    Check for onboard EEPROM: %s <speed> <port> eeprom check" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Initialize EEPROM:        %s <speed> <port> eeprom init" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Read EEPROM:              %s <speed> <port> eeprom read <vhf|uhf> <tx|rx>" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Write EEPROM:             %s <speed> <port> eeprom write <vhf|uhf> <tx|rx> <offset>" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Check for onboard EEPROM:          %s <speed> <port> eeprom check" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Initialize EEPROM:                 %s <speed> <port> eeprom init" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Read EEPROM:                       %s <speed> <port> eeprom read <vhf|uhf> <tx|rx>" EOL, m_arguments[0].c_str());
+	// ::fprintf(stdout, "    Read EEPROM data into JSON File:   %s <speed> <port> eeprom read json [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Write EEPROM:                      %s <speed> <port> eeprom write <vhf|uhf> <tx|rx> <offset>" EOL, m_arguments[0].c_str());
+	// ::fprintf(stdout, "    Write EEPROM data into JSON File:  %s <speed> <port> eeprom write json [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "JSON file Operations:" EOL);
 	::fprintf(stdout, "    Check for JSON file on disk:          %s <speed> <port> json check [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "    Initialize JSON file:                 %s <speed> <port> json init [path]" EOL, m_arguments[0].c_str());
@@ -2988,15 +3002,38 @@ bool CMMDVMCal::runOnceJSON()
 	if (m_arguments.size() < 5)
 		return false;
 
+	std::string filename = "eeprom.json";
+
 	std::string operation = m_arguments[4];
 
+	// TODO: Decide whether each operation gets the same number of arguments. If so, filename is always 6th argument.
+
 	if (operation == "check") {
-		// Check for existence of the JSON file representing EEPROM data
+		// Check for existence and validity of the JSON file representing EEPROM data
+
+		if (m_arguments.size() > 5)
+			filename = m_arguments[5];
+
+		if (m_jsonData == nullptr)
+			m_jsonData = new CJSONData();
+
+		m_jsonData->getDataFromFile(filename);
+
+		::fprintf(stdout, "Result: Valid JSON file %s" EOL, m_jsonData->isValid() ? "detected" : "not detected");
 
 		return true;
 	}
 	else if (operation == "init") {
 		// Initialize JSON file representing EEPROM data to default values
+
+		if (m_arguments.size() > 5)
+			filename = m_arguments[5];
+
+		if (m_jsonData == nullptr)
+			m_jsonData = new CJSONData();
+
+		bool result = m_jsonData->initializeFile(filename);
+		::fprintf(stdout, "Result: %s" EOL, result ? "JSON file successfully initialized" : "Error initializing JSON file");
 
 		return true;
 	}
@@ -3281,16 +3318,59 @@ bool CMMDVMCal::runOnceJSONRead()
 
 	if (m_arguments.size() < 6)
 		return false;
-
-	// TODO: Parsing of final argument in each case for file path
 	
 	std::string readObject = m_arguments[5];
+	std::string jsonFilePath = "eeprom.json";
 
+	if (readObject == "eeprom") {
+		// ./MMDVMCal 115200 /dev/ttyAMA0 json read eeprom [filename]
+		if (m_arguments.size() == 7)
+			jsonFilePath = m_arguments[6];
+
+		// Check for valid eeprom
+		if (!m_eepromData->checkDetected()) {
+			::fprintf(stderr, "Error: EEPROM module not detected." EOL);
+			return true;
+		}
+
+		// Open json file
+		if (m_jsonData == nullptr)
+			m_jsonData = new CJSONData();
+
+		m_jsonData->getDataFromFile(jsonFilePath);
+			
+		if (!m_jsonData->isValid()) {
+			::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+			return true;
+		}
+		// Read data from json file and write into eeprom
+		m_eepromData->setRxOffsetVHF(m_jsonData->getRxOffsetVHF());
+		m_eepromData->setTxOffsetVHF(m_jsonData->getTxOffsetVHF());
+		m_eepromData->setRxOffsetUHF(m_jsonData->getRxOffsetUHF());
+		m_eepromData->setTxOffsetUHF(m_jsonData->getTxOffsetUHF());
+		m_eepromData->writeOffsetData();
+		return true;
+	}
+	
 	if (readObject == "all") {
-		int uhfRxOffset = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "UhfRx");
-		int uhfTxOffset = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "UhfTx");
-		int vhfRxOffset = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "VhfRx");
-		int vhfTxOffset = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "VhfTx");
+		if (m_arguments.size() > 6) {
+			jsonFilePath = m_arguments[6];
+		}
+
+		if (m_jsonData == nullptr)
+			m_jsonData = new CJSONData();
+
+		m_jsonData->getDataFromFile(jsonFilePath);
+		
+		if (!m_jsonData->isValid()) {
+			::fprintf(stderr, "Error reading JSON data from file %s" EOL, jsonFilePath.c_str());
+			return true;
+		}
+
+		int uhfRxOffset = m_jsonData->getRxOffsetUHF();
+		int uhfTxOffset = m_jsonData->getTxOffsetUHF();
+		int vhfRxOffset = m_jsonData->getRxOffsetVHF();
+		int vhfTxOffset = m_jsonData->getTxOffsetVHF();
 		::fprintf(stdout, "Offsets in JSON File: UHF Tx: %d UHF Rx: %d VHF Tx: %d VHF Rx: %d" EOL, 
 			uhfTxOffset, uhfRxOffset, vhfTxOffset, vhfRxOffset);
 
@@ -3300,21 +3380,29 @@ bool CMMDVMCal::runOnceJSONRead()
 	if (m_arguments.size() < 7)
 		return false;
 
-	if (!m_jsonData.isValid()) {
-		::fprintf(stdout, "Invalid JSON data" EOL);
+	std::string readObjectSpecifier = m_arguments[6];
+
+	if (m_arguments.size() > 7)
+		jsonFilePath = m_arguments[7];
+
+	if (m_jsonData == nullptr)
+		m_jsonData = new CJSONData();
+
+	m_jsonData->getDataFromFile(jsonFilePath);
+		
+	if (!m_jsonData->isValid()) {
+		::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
 		return true;
 	}
 
-	std::string readObjectSpecifier = m_arguments[6];
-
 	if (readObject == "vhf") {
 		if (readObjectSpecifier == "tx") {
-			int value = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "VhfTx");
+			int value = m_jsonData->getTxOffsetVHF();
 			::fprintf(stdout, "Result: %d" EOL, value);
 			return true;
 		}
 		if (readObjectSpecifier == "rx") {
-			int value = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "VhfRx");
+			int value = m_jsonData->getRxOffsetVHF();
 			::fprintf(stdout, "Result: %d" EOL, value);			
 			return true;
 		}
@@ -3322,12 +3410,12 @@ bool CMMDVMCal::runOnceJSONRead()
 	}
 	if (readObject == "uhf") {
 		if (readObjectSpecifier == "tx") {
-			int value = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "UhfTx");
+			int value = m_jsonData->getTxOffsetUHF();
 			::fprintf(stdout, "Result: %d" EOL, value);
 			return true;
 		}
 		if (readObjectSpecifier == "rx") {
-			int value = m_jsonData.getValue<const std::string&, const std::string&, int>("Offset", "UhfRx");
+			int value = m_jsonData->getRxOffsetUHF();
 			::fprintf(stdout, "Result: %d" EOL, value);
 			return true;
 		}
@@ -3339,7 +3427,107 @@ bool CMMDVMCal::runOnceJSONRead()
 
 bool CMMDVMCal::runOnceJSONWrite()
 {
-    return false;
+    ::fprintf(stdout, "Writing JSON file..." EOL);
+
+	// ./MMDVMCal 115200 /dev/ttyAMA0 json write <vhf|uhf> <rx|tx> <offset> [filename]
+	// ./MMDVMCal 115200 /dev/ttyAMA0 json write eeprom [filename]
+
+	if (m_arguments.size() < 6)
+		return false;
+
+	if (m_arguments[5] == "eeprom") {
+		std::string jsonFilePath = "eeprom.json";
+
+		if (m_arguments.size() == 7)
+			jsonFilePath = m_arguments[6];
+
+		// Check for valid eeprom
+		if (m_eepromData->checkDetected() == false) {
+			::fprintf(stderr, "Error: EEPROM module not detected." EOL);
+			return true;
+		}
+		// Open json file
+		if (m_jsonData == nullptr)
+			m_jsonData = new CJSONData();
+
+		m_jsonData->getDataFromFile(jsonFilePath);
+			
+		if (!m_jsonData->isValid()) {
+			::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+			return true;
+		}
+		// Read data from eeprom and write into json file
+		m_jsonData->setRxOffsetVHF(m_eepromData->getRxOffsetVHF());
+		m_jsonData->setTxOffsetVHF(m_eepromData->getTxOffsetVHF());
+		m_jsonData->setRxOffsetUHF(m_eepromData->getRxOffsetUHF());
+		m_jsonData->setTxOffsetUHF(m_eepromData->getTxOffsetUHF());
+		m_jsonData->writeOffsetData();
+		return true;
+	}
+	
+	if (m_arguments.size() < 8)
+		return false;
+
+	std::string readObject = m_arguments[5];
+	std::string readObjectSpecifier = m_arguments[6];
+	int offsetValue = 0;
+
+	try {
+		offsetValue = std::stoi(m_arguments[7]);
+	}
+	catch(...) {
+		return false;
+	}
+
+	std::string jsonFilePath = "eeprom.json";
+
+	if (m_arguments.size() > 8)
+		jsonFilePath = m_arguments[8];
+
+	if (m_jsonData == nullptr)
+		m_jsonData = new CJSONData();
+
+	m_jsonData->getDataFromFile(jsonFilePath);
+		
+	if (!m_jsonData->isValid()) {
+		::fprintf(stderr, "Invalid JSON data read from file %s" EOL, jsonFilePath.c_str());
+		return true;
+	}
+
+	if (readObject == "vhf") {
+		if (readObjectSpecifier == "rx") {
+			m_jsonData->setRxOffsetVHF(offsetValue);
+			m_jsonData->writeOffsetData();
+
+			return true;
+		}
+		if (readObjectSpecifier == "tx") {
+			m_jsonData->setTxOffsetVHF(offsetValue);
+			m_jsonData->writeOffsetData();
+
+			return true;
+		}
+
+		return false;
+	}
+	if (readObject == "uhf") {
+		if (readObjectSpecifier == "rx") {
+			m_jsonData->setRxOffsetUHF(offsetValue);
+			m_jsonData->writeOffsetData();
+
+			return true;
+		}
+		if (readObjectSpecifier == "tx") {
+			m_jsonData->setTxOffsetUHF(offsetValue);
+			m_jsonData->writeOffsetData();
+
+			return true;
+		}
+		
+		return false;
+	}
+	
+	return false;
 }
 
 bool CMMDVMCal::writeCurrentTxOffsetConfig()

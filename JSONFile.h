@@ -1,39 +1,94 @@
-/* Manages the I/O between JSON data and filesystem. Contains 
-   a pointer to the JSON data that is modified outside this 
-   class. */
-
 #if !defined(JSONFILE_H)
 #define	JSONFILE_H
 
-#include "JSONData.h"
+#include <nlohmann/json.hpp>
 #include <fstream>
 
+/**Manages I/O between a JSON file on disk and JSON data in the program. File data is in the 
+   following format:
+
+    {
+        "offset": {
+            "vhfTx": 0,
+            "vhfRx": 0,
+            "uhfTx": 0,
+            "uhfRx": 0
+        }
+    }
+*/
 class CJSONFile
 {
 public:
-/**Attempt to open the specified file in r/w text mode. If 
-   there was an error, set m_valid as false. Otherwise, set 
-   it to true.*/
-    CJSONFile(const std::string& filename, CJSONData* jsonData);
+    /**Open the specified file. Open in write mode if createNew is true, otherwise open in 
+       read mode. If file was opened and subsequently read successfully, this file is valid.*/
+    CJSONFile(const std::string& filename, bool createNew = false);
 
-/**Close the file if it is open.*/
+    /**Before destruction, close the file if it is open.*/
     ~CJSONFile();
 
-/**Update the JSON data with data read from the file. Return
-   false if there was an error, otherwise return true.*/
+    /**Don't allow copying*/
+    CJSONFile(const CJSONFile&) = delete;
+    CJSONFile& operator=(const CJSONFile&) = delete;
+
+    /**Update the given JSON data with data read from the file. Return false if there was an 
+       error, otherwise return true.*/
     bool read();
 
-/**Write the current JSON data to the file. Return false if 
-   there was an error, otherwise return true.*/
+    /**Write the given JSON data to the file. Return false if there was an error, otherwise 
+       return true.*/
     bool write();
 
+    /**Return true if the file is open and in a valid state. Return false otherwise.*/
+    bool isValid() const { return m_valid; };
+
+    /**Write an offset integer value to internal data.*/
+    bool setOffsetValue(const std::string& key, int value);
+
+    /**Read an offset integer value from internal data. Return 0 if read failed.*/
+    int getOffsetValue(const std::string& key);
+
+    /**Get the JSON string in raw compressed format.*/
+    std::string getPlainString();
+
+    /**Get the JSON string in human-readable format.*/
+    std::string getFormattedString();
+
 private:
-    bool open();
+    /**If overwrite is true, open the file in write mode, otherwise open in read-only
+       mode.*/
+    bool open(bool overwrite = false);
+
+    /**Close the file if it is open.*/
     void close();
 
-    std::string   m_filename;
-    std::fstream* m_file;
-    CJSONData*    m_jsonData;
-    bool          m_valid;
+    /**Check that offset data exists and is of the correct type. Return accordingly.*/
+    bool checkData();
+
+    /**Set the value of a specific key within the specified section, creating it if it doesn't exist.*/
+    template<class S, class K, class V>
+    void setValue(const S& section, const K& key, const V& value);
+
+    /**Get the value of a specific key within the specified section. */
+    template <class S, class K, class V>
+    V getValue(const S& section, const K& key);
+
+    std::string    m_filename;
+    std::fstream   m_file;
+    nlohmann::json m_data;
+    bool           m_valid;
 };
+
+template <class S, class K, class V>
+inline void CJSONFile::setValue(const S &section, const K &key, const V &value)
+{
+    m_data[section][key] = value;
+}
+
+template <class S, class K, class V>
+inline V CJSONFile::getValue(const S& section, const K& key)
+{
+    return m_data[section][key];
+}
+
+
 #endif
