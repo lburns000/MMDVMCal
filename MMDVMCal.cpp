@@ -879,12 +879,13 @@ void CMMDVMCal::displayHelp_Unattended()
 	::fprintf(stdout, "    Write EEPROM:                      %s <speed> <port> eeprom write <vhf|uhf> <tx|rx> <offset>" EOL, m_arguments[0].c_str());
 	// ::fprintf(stdout, "    Write EEPROM data into JSON File:  %s <speed> <port> eeprom write json [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "JSON file Operations:" EOL);
-	::fprintf(stdout, "    Check for JSON file on disk:          %s <speed> <port> json check [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Check JSON file on disk:              %s <speed> <port> json check [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "    Initialize JSON file:                 %s <speed> <port> json init [path]" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Read JSON file into EEPROM:           %s <speed> <port> json read [eeprom] [path]" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Read JSON file to stdout:             %s <speed> <port> json read all [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Read JSON file data into EEPROM:      %s <speed> <port> json read eeprom [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Read JSON file data to stdout:        %s <speed> <port> json read all [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, "    Read single value in JSON file:       %s <speed> <port> json read <vhf|uhf> <tx|rx> [path]" EOL, m_arguments[0].c_str());
-	::fprintf(stdout, "    Overwrite JSON file with EEPROM data: %s <speed> <port> json write [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Overwrite JSON file with EEPROM data: %s <speed> <port> json write eeprom [path]" EOL, m_arguments[0].c_str());
+	::fprintf(stdout, "    Write single value in JSON file:      %s <speed> <port> json write <vhf|uhf> <tx|rx> <offset> [path]" EOL, m_arguments[0].c_str());
 	::fprintf(stdout, EOL);
 }
 
@@ -3003,10 +3004,7 @@ bool CMMDVMCal::runOnceJSON()
 		return false;
 
 	std::string filename = "eeprom.json";
-
 	std::string operation = m_arguments[4];
-
-	// TODO: Decide whether each operation gets the same number of arguments. If so, filename is always 6th argument.
 
 	if (operation == "check") {
 		// Check for existence and validity of the JSON file representing EEPROM data
@@ -3442,8 +3440,8 @@ bool CMMDVMCal::runOnceJSONWrite()
 	if (m_arguments.size() < 8)
 		return false;
 
-	std::string readObject = m_arguments[5];
-	std::string readObjectSpecifier = m_arguments[6];
+	std::string writeObject = m_arguments[5];
+	std::string writeObjectSpecifier = m_arguments[6];
 	int offsetValue = 0;
 
 	try {
@@ -3461,14 +3459,14 @@ bool CMMDVMCal::runOnceJSONWrite()
 	if (!openJSONFile(jsonFilePath))
 		return true;
 
-	if (readObject == "vhf") {
-		if (readObjectSpecifier == "rx") {
+	if (writeObject == "vhf") {
+		if (writeObjectSpecifier == "rx") {
 			m_jsonData->setRxOffsetVHF(offsetValue);
 			m_jsonData->writeOffsetData();
 
 			return true;
 		}
-		if (readObjectSpecifier == "tx") {
+		if (writeObjectSpecifier == "tx") {
 			m_jsonData->setTxOffsetVHF(offsetValue);
 			m_jsonData->writeOffsetData();
 
@@ -3477,14 +3475,14 @@ bool CMMDVMCal::runOnceJSONWrite()
 
 		return false;
 	}
-	if (readObject == "uhf") {
-		if (readObjectSpecifier == "rx") {
+	if (writeObject == "uhf") {
+		if (writeObjectSpecifier == "rx") {
 			m_jsonData->setRxOffsetUHF(offsetValue);
 			m_jsonData->writeOffsetData();
 
 			return true;
 		}
-		if (readObjectSpecifier == "tx") {
+		if (writeObjectSpecifier == "tx") {
 			m_jsonData->setTxOffsetUHF(offsetValue);
 			m_jsonData->writeOffsetData();
 
