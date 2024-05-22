@@ -193,9 +193,9 @@ m_freqSweepTestTaken(false),
 m_interactive(true),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
-m_jsonData(nullptr),
+m_jsonData(nullptr)
 // m_jsonFile(nullptr),
-m_berTestType(BTT_DSTAR)
+// m_fecTestType(FTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -301,9 +301,9 @@ m_interactive(false),
 m_arguments(args),
 m_statusTimer(250U, 1U),
 m_freqSweepTimer(1000U, 1U),
-m_jsonData(nullptr),
+m_jsonData(nullptr)
 // m_jsonFile(nullptr),
-m_berTestType(BTT_DSTAR)
+// m_fecTestType(FTT_DSTAR)
 {
 	m_eepromData = new CEEPROMData;
 	m_buffer = new unsigned char[BUFFER_LENGTH];
@@ -541,12 +541,12 @@ void CMMDVMCal::loop_MMDVM()
 		// 		displayModem(m_buffer, m_length);
 		// 	counter = 0U;
 		// }
-
-		if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
-			if (getStatus())
-				displayModem(m_buffer, m_length);
-			m_statusTimer.start();
-		}
+		doStatusIntervalCheck();
+		// if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
+		// 	if (getStatus())
+		// 		displayModem(m_buffer, m_length);
+		// 	m_statusTimer.start();
+		// }
 
 		//counter++;
 
@@ -728,8 +728,7 @@ void CMMDVMCal::loop_MMDVM_HS()
 				setPOCSAGCal();
 				break;
 			case 'S':
-				m_berTestType = BTT_DMR;
-				setFreqSweep();
+				setFreqSweep(FTT_DMR);
 				break;
 			case 's':
 				setRSSI();
@@ -748,24 +747,27 @@ void CMMDVMCal::loop_MMDVM_HS()
 				break;
 		}
 
-		RESP_TYPE_MMDVM resp = getResponse();
+		// RESP_TYPE_MMDVM resp = getResponse();
 
-		if (resp == RTM_OK)
-			displayModem(m_buffer, m_length);
+		// if (resp == RTM_OK)
+		// 	displayModem(m_buffer, m_length);
+		doModemResponseCheck();
 
 		m_ber.clock(ms);
 		sleep(5U);
 
-		if (m_freqSweep && m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
-			doFreqSweep();
-			m_freqSweepTimer.start();
-		}
+		doFreqSweepIntervalCheck();
+		// if (m_freqSweep && m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
+		// 	doFreqSweep();
+		// 	m_freqSweepTimer.start();
+		// }
 
-		if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
-			if (getStatus())
-				displayModem(m_buffer, m_length);
-			m_statusTimer.start();
-		}
+		doStatusIntervalCheck();
+		// if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
+		// 	if (getStatus())
+		// 		displayModem(m_buffer, m_length);
+		// 	m_statusTimer.start();
+		// }
 
 		ms = stopWatch.elapsed();
 		stopWatch.start();
@@ -2140,7 +2142,7 @@ bool CMMDVMCal::setTransmit()
 	return true;
 }
 
-void CMMDVMCal::displayModem(const unsigned char *buffer, unsigned int length)
+void CMMDVMCal::displayModem(const unsigned char *buffer, unsigned int length, bool showOutput)
 {
 	if (buffer[2U] == MMDVM_GET_STATUS) {
 		bool adcOverflow = (buffer[5U] & 0x02U) == 0x02U;
@@ -2191,11 +2193,13 @@ void CMMDVMCal::displayModem(const unsigned char *buffer, unsigned int length)
 		m_ber.DSTARFEC(buffer + 3U, buffer[2U]);
 	} else if (buffer[2U] == MMDVM_DMR_DATA1 || buffer[2U] == MMDVM_DMR_DATA2) {
 		if (m_dmrBERFEC && m_freqSweep) {
-			m_ber.DMRFEC(buffer + 4U, buffer[3], &m_tmpBER);
+			// m_ber.DMRFEC(buffer + 4U, buffer[3], &m_tmpBER);
+			m_ber.doFEC(buffer + 4U, buffer[3], FTT_DMR, showOutput, &m_tmpBER);
 			m_tmpBERTotal += m_tmpBER;
 			m_tmpBERNum++;
 		} else if (m_dmrBERFEC) {
-			m_ber.DMRFEC(buffer + 4U, buffer[3]);
+			// m_ber.DMRFEC(buffer + 4U, buffer[3]);
+			m_ber.doFEC(buffer + 4U, buffer[3], FTT_DMR, showOutput);
 		} else {
 			m_ber.DMR1K(buffer + 4U, buffer[3]);
 		}
@@ -2294,6 +2298,31 @@ bool CMMDVMCal::getStatus()
 	return true;
 }
 
+void CMMDVMCal::doStatusIntervalCheck()
+{
+	if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
+		if (getStatus())
+			displayModem(m_buffer, m_length, m_interactive);
+		
+		m_statusTimer.start();
+	}
+}
+
+void CMMDVMCal::doFreqSweepIntervalCheck()
+{
+	if (m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
+		doFreqSweep();
+		m_freqSweepTimer.start();
+	}
+}
+
+void CMMDVMCal::doModemResponseCheck()
+{
+	RESP_TYPE_MMDVM resp = getResponse();
+	if (resp == RTM_OK)
+		displayModem(m_buffer, m_length, m_interactive);
+}
+
 RESP_TYPE_MMDVM CMMDVMCal::getResponse()
 {
 	if (m_offset == 0U) {
@@ -2388,6 +2417,50 @@ RESP_TYPE_MMDVM CMMDVMCal::getResponse()
 	return RTM_OK;
 }
 
+unsigned int CMMDVMCal::sanitizeFrequencyString(const std::string& frequency)
+{
+	unsigned int newFreq;
+
+	try {
+		newFreq = std::stoul(frequency);
+	}
+	catch(...) {
+		newFreq = 0U;
+	}
+
+	// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
+	if (newFreq >= 100000000U && newFreq <= 999999999U) {
+		return newFreq;
+	}
+	else {
+		::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
+		return 433000000;
+	}
+}
+
+unsigned int CMMDVMCal::sanitizeDurationString(const std::string &duration)
+{
+	unsigned int newDuration = 0U;
+	try {
+		newDuration = std::stoul(duration);
+	}
+	catch(...) {
+		newDuration = 0U;
+	}
+
+	if (newDuration == 0U) {
+		::fprintf(stdout, "Invalid duration, using default duration of 5s" EOL);
+		newDuration = 5U;
+	}
+	// Set a reasonable limit on duration value
+	else if (newDuration > 30U) {
+		::fprintf(stdout, "Exceeded max value of duration, using max value of 30s." EOL);
+		newDuration = 30U;
+	}
+
+	return newDuration;
+}
+
 void CMMDVMCal::sleep(unsigned int ms)
 {
 #if defined(_WIN32) || defined(_WIN64)
@@ -2397,40 +2470,35 @@ void CMMDVMCal::sleep(unsigned int ms)
 #endif
 }
 
-bool CMMDVMCal::setFreqSweep()
+// TODO: Rework this to accept FEC_TEST_TYPE arg instead
+bool CMMDVMCal::setFreqSweep(FEC_TEST_TYPE type)
 {
 	::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
 	// Pause to allow user to key up their radio and for it to stabilize
 	sleep(1000U);
 	setFreqValue(m_startfrequency, false);
 
-	switch (m_berTestType) {
-		case BTT_DSTAR:
+	switch (type) {
+		case FTT_DSTAR:
 			::fprintf(stdout, "Starting D-Star BER test for optimal Rx Offset..." EOL);
 			setDSTARBER_FEC();
 			break;
-		case BTT_DMR:
+		case FTT_DMR:
 			::fprintf(stdout, "Starting DMR BER test for optimal Rx Offset..." EOL);
 			setDMRBER_FEC();
 			break;
-		case BTT_YSF:
+		case FTT_YSF:
 			::fprintf(stdout, "Starting YSF BER test for optimal Rx Offset..." EOL);
 			setYSFBER_FEC();
 			break;
-		case BTT_P25:
+		case FTT_P25:
 			::fprintf(stdout, "Starting P25 BER test for optimal Rx Offset..." EOL);
 			setP25BER_FEC();
 			break;
-		case BTT_NXDN:
+		case FTT_NXDN:
 			::fprintf(stdout, "Starting NXDN BER test for optimal Rx Offset..." EOL);
 			setNXDNBER_FEC();
 			break;
-		case BTT_POCSAG:
-			::fprintf(stdout, "No POCSAG BER test available." EOL);
-			return false;
-		case BTT_M17:
-			::fprintf(stdout, "No M17 BER test available." EOL);
-			return false;
 		default:
 			::fprintf(stdout, "Unknown BER test specified." EOL);
 			return false;
@@ -2537,6 +2605,34 @@ void CMMDVMCal::doFreqSweep()
 			m_freqSweepTestTaken = true;
 			sleep(1000U);
 		}
+	}
+}
+
+void CMMDVMCal::setBER_FEC(FEC_TEST_TYPE type)
+{
+	switch (type) {
+		case FTT_DSTAR:
+			setDSTARBER_FEC();
+			break;
+
+		case FTT_DMR:
+			setDMRBER_FEC();
+			break;
+
+		case FTT_YSF:
+			setYSFBER_FEC();
+			break;
+
+		case FTT_P25:
+			setP25BER_FEC();
+			break;
+
+		case FTT_NXDN:
+			setNXDNBER_FEC();
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -2922,30 +3018,21 @@ bool CMMDVMCal::runOnceRadio()
 		return false;
 
 	std::string mode = m_arguments[3];
-	std::string operation = m_arguments[4];
-	//unsigned int ms = 0U;
 
-	if (m_arguments[3] == "dstar") {
+	if (mode == "dstar") 
 		return runOnceDStar();
-	}
-	if (mode == "dmr") {		
+	if (mode == "dmr")
 		return runOnceDMR();
-	}
-	if (m_arguments[3] == "ysf") {
+	if (mode == "ysf")
 		return runOnceYSF();
-	}
-	if (m_arguments[3] == "p25") {
+	if (mode == "p25")
 		return runOnceP25();
-	}
-	if (m_arguments[3] == "nxdn") {
+	if (mode == "nxdn")
 		return runOnceNXDN();
-	}
-	if (m_arguments[3] == "m17") {
+	if (mode == "m17")
 		return runOnceM17();
-	}
-	if (m_arguments[3] == "pocsag") {
+	if (mode == "pocsag")
 		return runOncePOCSAG();
-	}
 
     return false;
 }
@@ -2991,7 +3078,6 @@ bool CMMDVMCal::runOnceEEPROM()
 	}
 	else if (operation == "init") {		
 		//::fprintf(stdout, "Initializing EEPROM..." EOL);
-		// Initialize EEPROM
 		return EEPROMInitialize();
 	}
 
@@ -3045,10 +3131,97 @@ bool CMMDVMCal::runOnceJSON()
     return false;
 }
 
+bool CMMDVMCal::runOnceBER(FEC_TEST_TYPE type)
+{
+	// Replacement for individual runOnceDMRBER(), runOnceDSTARBER(), etc.
+
+	if (m_arguments.size() >= 6) {
+		unsigned int newFreq = sanitizeFrequencyString(m_arguments[5]);
+		setFreqValue(newFreq, true);
+	}
+
+	std::string berTypeString = CBERCal::FECTestTypeToString(type);
+	::fprintf(stdout, "Beginning %s BER test (%u Hz)..." EOL, berTypeString.c_str(), m_startfrequency);
+
+	// Need to start BER test and set a timer for specified time (if given) or 5s as a default
+	unsigned int duration = 5U;
+	if (m_arguments.size() >= 7) {
+		duration = sanitizeDurationString(m_arguments[6]);
+	}
+	CTimer durationTimer(1000, duration);
+	CStopWatch stopWatch;
+	::fprintf(stdout, "Press and hold the PTT on your radio until the test is complete." EOL);
+	// m_fecTestType = type;
+	// setDMRBER_FEC();
+	setBER_FEC(type);
+	stopWatch.start();
+	durationTimer.start();
+	m_statusTimer.start();
+	unsigned int ms = 0U;
+
+	while (durationTimer.isRunning() && !durationTimer.hasExpired()) {		
+		doModemResponseCheck();
+		ms = stopWatch.elapsed();
+		stopWatch.start();
+		m_ber.clock(ms);
+		m_statusTimer.clock(ms);
+		durationTimer.clock(ms);
+		doStatusIntervalCheck();
+		sleep(5U);			
+	}
+
+	::fprintf(stdout, "Total BER: %.4f%%" EOL, m_ber.getCurrentBER());
+
+	return true;
+}
+
+bool CMMDVMCal::runOnceAutocal(FEC_TEST_TYPE type)
+{
+	// Check for additional frequency argument
+	if (m_arguments.size() >= 6) {
+		unsigned int newFreq = sanitizeFrequencyString(m_arguments[5]);
+		setFreqValue(newFreq, true);
+	}
+
+	unsigned int ms = 0;
+
+	CStopWatch stopWatch;
+	stopWatch.start();
+
+	// Do autocal
+	if (!setFreqSweep(type))
+		return true;
+
+	while (m_freqSweep) {
+		doModemResponseCheck();
+		ms = stopWatch.elapsed();
+		stopWatch.start();
+		m_ber.clock(ms);
+		m_statusTimer.clock(ms);
+		m_freqSweepTimer.clock(ms);
+		doStatusIntervalCheck();
+		doFreqSweepIntervalCheck();
+		sleep(5U);
+	}
+
+	return true;
+}
+
 bool CMMDVMCal::runOnceDStar()
 {
-	::fprintf(stdout, "Unattended DStar functionality is not implemented yet." EOL);
-    return true;
+	if (m_arguments.size() < 5)
+		return false;
+	
+	std::string operation = m_arguments[4];
+
+	if (operation == "ber") {
+		return runOnceBER(FTT_DSTAR);
+	}
+	if (operation == "autocal") {
+		return runOnceAutocal(FTT_DSTAR);
+	}
+
+    return false;
 }
 
 bool CMMDVMCal::runOnceDMR()
@@ -3057,127 +3230,12 @@ bool CMMDVMCal::runOnceDMR()
 		return false;
 
 	std::string operation = m_arguments[4];
-	unsigned int ms = 0U;
 
 	if (operation == "ber") {
-		// Check for additional frequency argument
-		if (m_arguments.size() >= 6) {
-			unsigned int newFreq;
-			try {
-				newFreq = std::stoul(m_arguments[5]);
-			}
-			catch(...) {
-				newFreq = 0U;
-			}
-			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
-			if (newFreq >= 100000000U && newFreq <= 999999999U) {
-				setFreqValue(newFreq, true);
-			}
-			else {
-				::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
-			}
-		}
-		::fprintf(stdout, "Beginning DMR BER test (%u Hz)..." EOL, m_startfrequency);
-		// Need to start BER test and set a timer for specified time (if given) or 5s as a default
-		unsigned int duration = 5U;
-		if (m_arguments.size() >= 7) {
-			try {
-				duration = std::stoul(m_arguments[6]);
-			}
-			catch(...) {
-				::fprintf(stdout, "Invalid duration, using default duration of 5s" EOL);
-				duration = 5U;
-			}
-			// Set a reasonable limit on duration value
-			if (duration > 30U) {
-				::fprintf(stdout, "Exceeded max value of duration, using max value of 30s." EOL);
-				duration = 30U;
-			}
-		}
-		CTimer durationTimer(1000, duration);
-		CStopWatch stopWatch;
-		::fprintf(stdout, "Press and hold the PTT until the test is complete." EOL);
-		m_berTestType = BTT_DMR;
-		setDMRBER_FEC();
-		stopWatch.start();
-		durationTimer.start();
-		m_statusTimer.start();
-		while (durationTimer.isRunning() && !durationTimer.hasExpired()) {
-			RESP_TYPE_MMDVM resp = getResponse();
-			if (resp == RTM_OK)
-				displayModem(m_buffer, m_length);
-			
-			ms = stopWatch.elapsed();
-			stopWatch.start();
-			m_ber.clock(ms);
-			m_statusTimer.clock(ms);
-			durationTimer.clock(ms);
-			if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
-				if (getStatus())
-					displayModem(m_buffer, m_length);
-				
-				m_statusTimer.start();
-			}
-			sleep(5U);			
-		}
-		::fprintf(stdout, "Total BER: %.4f%%" EOL, m_ber.getCurrentBER());
-
-		return true;
+		return runOnceBER(FTT_DMR);
 	}
-	else if (operation == "autocal") {
-		// Check for additional frequency argument
-		if (m_arguments.size() >= 6) {
-			unsigned int newFreq;
-			try {
-				newFreq = std::stoul(m_arguments[5]);
-			}
-			catch(...) {
-				newFreq = 0U;
-			}
-			// This constraint should be enough because the FW should give us a NAK if given an invalid frequency
-			if (newFreq >= 100000000U && newFreq <= 999999999U) {
-				setFreqValue(newFreq, true);
-			}
-			else {
-				::fprintf(stdout, "Invalid frequency, using default frequency of 433000000 Hz" EOL);
-			}
-		}
-
-		CStopWatch stopWatch;
-		stopWatch.start();
-
-		// Do autocal
-		m_berTestType = BTT_DMR;
-		if (!setFreqSweep())
-			return true;
-
-		while (m_freqSweep) {
-			RESP_TYPE_MMDVM resp = getResponse();
-			if (resp == RTM_OK)
-				displayModem(m_buffer, m_length);
-
-			ms = stopWatch.elapsed();
-			stopWatch.start();
-			m_ber.clock(ms);
-			m_statusTimer.clock(ms);
-			m_freqSweepTimer.clock(ms);
-
-			if (m_statusTimer.isRunning() && m_statusTimer.hasExpired()) {
-				if (getStatus())
-					displayModem(m_buffer, m_length);
-				
-				m_statusTimer.start();
-			}
-
-		 	if (m_freqSweepTimer.isRunning() && m_freqSweepTimer.hasExpired()) {
-				doFreqSweep();
-				m_freqSweepTimer.start();
-		 	}
-
-			sleep(5U);
-
-		}
-		return true;
+	if (operation == "autocal") {
+		return runOnceAutocal(FTT_DMR);
 	}
 
     return false;
@@ -3185,20 +3243,47 @@ bool CMMDVMCal::runOnceDMR()
 
 bool CMMDVMCal::runOnceYSF()
 {
-	::fprintf(stdout, "Unattended YSF functionality is not implemented yet." EOL);
-    return true;
+	if (m_arguments.size() < 5)
+		return false;
+
+	std::string operation = m_arguments[4];
+
+	if (operation == "ber")
+		return runOnceBER(FTT_YSF);
+	if (operation == "autocal")
+		return runOnceAutocal(FTT_YSF);
+
+	return false;
 }
 
 bool CMMDVMCal::runOnceP25()
 {
-	::fprintf(stdout, "Unattended P25 functionality is not implemented yet." EOL);
-    return true;
+	if (m_arguments.size() < 5)
+		return false;
+
+	std::string operation = m_arguments[4];
+
+	if (operation == "ber")
+		return runOnceBER(FTT_P25);
+	if (operation == "autocal")
+		return runOnceAutocal(FTT_P25);
+		
+	return false;
 }
 
 bool CMMDVMCal::runOnceNXDN()
 {
-	::fprintf(stdout, "Unattended NXDN functionality is not implemented yet." EOL);
-    return true;
+	if (m_arguments.size() < 5)
+		return false;
+
+	std::string operation = m_arguments[4];
+
+	if (operation == "ber")
+		return runOnceBER(FTT_NXDN);
+	if (operation == "autocal")
+		return runOnceAutocal(FTT_NXDN);
+		
+	return false;
 }
 
 bool CMMDVMCal::runOnceM17()

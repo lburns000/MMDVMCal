@@ -81,15 +81,7 @@ enum MMDVM_STATE {
   STATE_M17CAL    = 108
 };
 
-enum BER_TEST_TYPE {
-	BTT_DSTAR  = 0,
-	BTT_DMR    = 1,
-	BTT_YSF    = 2,
-	BTT_P25    = 3,
-	BTT_NXDN   = 4,
-	BTT_POCSAG = 5,
-	BTT_M17    = 6
-};
+
 
 class CMMDVMCal {
 public:
@@ -161,7 +153,7 @@ private:
 	CTimer						 m_freqSweepTimer;
 	CJSONData*                   m_jsonData;
 	// CJSONFile*                   m_jsonFile;
-	BER_TEST_TYPE                m_berTestType;
+	// FEC_TEST_TYPE                m_fecTestType;
 
 	void displayHelp_MMDVM();
 	void displayHelp_MMDVM_HS();
@@ -202,9 +194,10 @@ private:
 	bool setRSSI();
 	bool setM17Cal();
 	bool setIntCal();
-	bool setFreqSweep(); 										// This is for an automated DMR BER test to find optimal offset
+	bool setFreqSweep(FEC_TEST_TYPE type); 						// This is for an automated DMR BER test to find optimal offset
 	bool setFreqValue(unsigned int freq, bool changeStart);		// Alternative to setEnterFreq() that does not require user input, option to change m_startfrequency
 	void doFreqSweep();											// Does the actual work for setFreqSweep()
+	void setBER_FEC(FEC_TEST_TYPE type);
 
 	bool EEPROMDisplay();										// Print EEPROM data in human-readable form
 	bool writeEEPROMFreqSweepSimplex();							// Write the last freq sweep test result into EEPROM offset data
@@ -225,6 +218,8 @@ private:
 	bool runOnceRadio();										// Run once to do a radio operation
 	bool runOnceEEPROM();										// Run once to do an operation directly on EEPROM
 	bool runOnceJSON();                                         // Run once to do an operation on JSON file representing EEPROM data
+	bool runOnceBER(FEC_TEST_TYPE type);                        // Run the given BER test with the given type
+	bool runOnceAutocal(FEC_TEST_TYPE type);                    // Run the given autocal BER test with the given type
 	bool runOnceDStar();										// runOnceRadio() will call this
 	bool runOnceDMR();											// runOnceRadio() will call this
 	bool runOnceYSF();											// runOnceRadio() will call this
@@ -239,14 +234,20 @@ private:
 	bool openJSONFile(const std::string& filename);
 
 	bool initModem();
-	void displayModem(const unsigned char* buffer, unsigned int length);
+	void displayModem(const unsigned char* buffer, unsigned int length, bool showOutput = true);
 	bool writeConfig1(float txlevel, bool debug);
 	bool writeConfig2(float txlevel, bool debug);
 	void sleep(unsigned int ms);
 	bool setFrequency();
 	bool getStatus();
+	void doStatusIntervalCheck();
+	void doFreqSweepIntervalCheck();
+	void doModemResponseCheck();
 
 	RESP_TYPE_MMDVM getResponse();
+
+	unsigned int sanitizeFrequencyString(const std::string& frequency);
+	unsigned int sanitizeDurationString(const std::string& duration);
 };
 
 #endif

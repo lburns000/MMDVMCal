@@ -536,7 +536,8 @@ m_bitsPrev(0),
 m_framesPrev(0),
 //m_timeout(300U),
 //m_timerInt(0U),
-m_timer(1000U, 0U, 300U)
+m_timer(1000U, 0U, 300U),
+m_consoleOutputEnabled(true)
 {
 }
 
@@ -544,32 +545,65 @@ CBERCal::~CBERCal()
 {
 }
 
-void CBERCal::DSTARFEC(const unsigned char* buffer, const unsigned char m_tag)
+void CBERCal::doFEC(const unsigned char *buffer, const unsigned char m_tag, FEC_TEST_TYPE fecType, bool showOutput, float* BER)
+{
+	m_consoleOutputEnabled = showOutput;
+
+	switch (fecType) {
+		case FTT_DSTAR:
+			DSTARFEC(buffer, m_tag, BER);
+			break;
+		
+		case FTT_DMR:
+			DMRFEC(buffer, m_tag, BER);
+			break;
+
+		case FTT_YSF:
+			YSFFEC(buffer, BER);
+			break;
+
+		case FTT_P25:
+			P25FEC(buffer, BER);
+			break;
+
+		case FTT_NXDN:
+			NXDNFEC(buffer, m_tag, BER);
+			break;
+
+		default:
+			break;
+	}
+}
+
+void CBERCal::DSTARFEC(const unsigned char* buffer, const unsigned char m_tag, float* BER)
 {
 	unsigned int a = 0U;
 	unsigned int b = 0U;
 	unsigned int c = 0U;
 
 	if (m_tag == 0x10U) {
-		::fprintf(stdout, "D-Star voice header received" EOL);
-		//timerStart();
+		if (m_consoleOutputEnabled)
+			::fprintf(stdout, "D-Star voice header received" EOL);
 		m_timer.start();
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
 		return;
 	} else if (m_tag == 0x13U) {
-		if (m_bits > 0U)
-			::fprintf(stdout, "D-Star voice end received, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
+		if (m_bits > 0U) {
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "D-Star voice end received, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
-		//timerStop();
+		if (BER != nullptr)
+			*BER = float(m_errors * 100U) / float(m_bits);
+		}
+
 		m_timer.stop();
 		m_errors = 0U;
 		m_bits = 0U;
 		m_frames = 0U;
 		return;
 	} else if (m_tag == 0x11U) {
-		//timerStart();
 		m_timer.start();
 		unsigned int MASK = 0x800000U;
 		for (unsigned int i = 0U; i < 24U; i++) {
@@ -584,19 +618,25 @@ void CBERCal::DSTARFEC(const unsigned char* buffer, const unsigned char m_tag)
 
 		unsigned int errors = regenerateDStar(a, b);
 
+		float dStarBer = float(errors) / 0.48F;
+		if (BER != nullptr)
+			*BER = dStarBer;
+
 		m_bits += 48U;
 		m_errors += errors;
 		m_frames++;
 
-		::fprintf(stdout, "D-Star audio FEC BER %% (errs): %.3f%% (%u/48)" EOL, float(errors) / 0.48F, errors);
+		if (m_consoleOutputEnabled)
+			::fprintf(stdout, "D-Star audio FEC BER %% (errs): %.3f%% (%u/48)" EOL, float(errors) / 0.48F, errors);
+
 	}
 }
 
-void CBERCal::DMRFEC(const unsigned char* buffer, const unsigned char m_seq)
+void CBERCal::DMRFEC(const unsigned char* buffer, const unsigned char m_seq, float* BER)
 {
 	if (m_seq == 65U) {
-		::fprintf(stdout, "DMR voice header received" EOL);
-		//timerStart();
+		if (m_consoleOutputEnabled)
+			::fprintf(stdout, "DMR voice header received" EOL);
 		m_timer.start();
 		m_errorsPrev = m_errors;
 		m_bitsPrev = m_bits;
@@ -606,116 +646,14 @@ void CBERCal::DMRFEC(const unsigned char* buffer, const unsigned char m_seq)
 		m_frames = 0U;
 		return;
 	} else if (m_seq == 66U) {
-		if (m_bits > 0U)
-			::fprintf(stdout, "DMR voice end received, total frames: %d, bits: %d, errors: %d, BER: %.4f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
+		if (m_bits > 0U) {
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "DMR voice end received, total frames: %d, bits: %d, errors: %d, BER: %.4f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
-		//timerStop();
-		m_timer.stop();
-		m_errorsPrev = m_errors;
-		m_bitsPrev = m_bits;
-		m_framesPrev = m_frames;
-		m_errors = 0U;
-		m_bits = 0U;
-		m_frames = 0U;
-		return;
-	}
-
-	//timerStart();
-	m_timer.start();
-
-	unsigned int a1 = 0U, a2 = 0U, a3 = 0U;
-	unsigned int MASK = 0x800000U;
-	for (unsigned int i = 0U; i < 24U; i++, MASK >>= 1) {
-		unsigned int a1Pos = DMR_A_TABLE[i];
-		unsigned int a2Pos = a1Pos + 72U;
-		if (a2Pos >= 108U)
-			a2Pos += 48U;
-		unsigned int a3Pos = a1Pos + 192U;
-
-		if (READ_BIT(buffer, a1Pos))
-			a1 |= MASK;
-		if (READ_BIT(buffer, a2Pos))
-			a2 |= MASK;
-		if (READ_BIT(buffer, a3Pos))
-			a3 |= MASK;
-	}
-
-	unsigned int b1 = 0U, b2 = 0U, b3 = 0U;
-	MASK = 0x400000U;
-	for (unsigned int i = 0U; i < 23U; i++, MASK >>= 1) {
-		unsigned int b1Pos = DMR_B_TABLE[i];
-		unsigned int b2Pos = b1Pos + 72U;
-		if (b2Pos >= 108U)
-			b2Pos += 48U;
-		unsigned int b3Pos = b1Pos + 192U;
-
-		if (READ_BIT(buffer, b1Pos))
-			b1 |= MASK;
-		if (READ_BIT(buffer, b2Pos))
-			b2 |= MASK;
-		if (READ_BIT(buffer, b3Pos))
-			b3 |= MASK;
-	}
-
-	unsigned int c1 = 0U, c2 = 0U, c3 = 0U;
-	MASK = 0x1000000U;
-	for (unsigned int i = 0U; i < 25U; i++, MASK >>= 1) {
-		unsigned int c1Pos = DMR_C_TABLE[i];
-		unsigned int c2Pos = c1Pos + 72U;
-		if (c2Pos >= 108U)
-			c2Pos += 48U;
-		unsigned int c3Pos = c1Pos + 192U;
-
-		if (READ_BIT(buffer, c1Pos))
-			c1 |= MASK;
-		if (READ_BIT(buffer, c2Pos))
-			c2 |= MASK;
-		if (READ_BIT(buffer, c3Pos))
-			c3 |= MASK;
-	}
-
-	unsigned int errors = regenerateDMR(a1, b1, c1);
-	errors += regenerateDMR(a2, b2, c2);
-	errors += regenerateDMR(a3, b3, c3);
-
-	float dmr_ber = float(errors) / 1.41F;
-
-	m_errors += errors;
-	m_bits += 141;
-	m_frames++;
-
-	if (dmr_ber < 10.0F)
-		::fprintf(stdout, "DMR audio seq. %d, FEC BER %% (errs): %.3f%% (%u/141)" EOL, m_seq & 0x0FU, dmr_ber, errors);
-}
-
-void CBERCal::DMRFEC(const unsigned char *buffer, const unsigned char m_seq, float *BER)
-{
-
-	if (m_seq == 65U) {
-		//::fprintf(stdout, "DMR voice header received" EOL);
-		//::fprintf(stdout, "Radio DMR transmission detected (voice header received)" EOL);
-		//timerStart();
-		m_timer.start();
-		m_errorsPrev = m_errors;
-		m_bitsPrev = m_bits;
-		m_framesPrev = m_frames;
-		m_errors = 0U;
-		m_bits = 0U;
-		m_frames = 0U;
-		return;
-	} else if (m_seq == 66U) {
-		//::fprintf(stdout, "DMR voice end received, total frames: %d, bits: %d, errors: %d, BER: %.4f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
-		*BER = float(m_errors * 100U) / float(m_bits);
-		//char quality[10];
-		if (*BER <= 1.0f) {
-			//::sprintf(quality, "Good");
-		} else if (*BER <= 1.5f) {
-			//::sprintf(quality, "OK");
-		} else {
-			//::sprintf(quality, "Bad");
+			if (BER != nullptr)
+				*BER = float(m_errors * 100U) / float(m_bits);
 		}
-		//::fprintf(stdout, "DMR voice end received. Avg BER = %.4f%% - %s" EOL, *BER, quality);
-		//timerStop();
+
 		m_timer.stop();
 		m_errorsPrev = m_errors;
 		m_bitsPrev = m_bits;
@@ -726,8 +664,6 @@ void CBERCal::DMRFEC(const unsigned char *buffer, const unsigned char m_seq, flo
 		return;
 	}
 
-
-	//timerStart();
 	m_timer.start();
 
 	unsigned int a1 = 0U, a2 = 0U, a3 = 0U;
@@ -792,11 +728,11 @@ void CBERCal::DMRFEC(const unsigned char *buffer, const unsigned char m_seq, flo
 	m_frames++;
 
 	if (dmr_ber < 10.0F) {
-		*BER = dmr_ber;
-		//::fprintf(stdout, "DMR audio seq. %d, FEC BER %% (errs): %.3f%% (%u/141)" EOL, m_seq & 0x0FU, dmr_ber, errors);
-		//::fprintf(stdout, "DMR BER = %.3f%%" EOL, dmr_ber);
-	} else {
-		//::fprintf(stdout, "DMR BER >= 10%%" EOL);
+		if (BER != nullptr)
+			*BER = dmr_ber;
+
+		if (m_consoleOutputEnabled)
+			::fprintf(stdout, "DMR audio seq. %d, FEC BER %% (errs): %.3f%% (%u/141)" EOL, m_seq & 0x0FU, dmr_ber, errors);
 	}
 }
 
@@ -809,7 +745,6 @@ void CBERCal::DMR1K(const unsigned char *buffer, const unsigned char m_seq)
 		for (unsigned int i = 0U; i < 33U; i++)
 			errors += countErrs(buffer[i], VH_DMO1K[i]);
 
-		//timerStart();
 		m_timer.start();
 		m_errors += errors;
 		m_bits += 264;
@@ -821,7 +756,6 @@ void CBERCal::DMR1K(const unsigned char *buffer, const unsigned char m_seq)
 		for (unsigned int i = 0U; i < 33U; i++)
 			errors += countErrs(buffer[i], VT_DMO1K[i]);
 
-		//timerStop();
 		m_timer.stop();
 		m_errors += errors;
 		m_bits += 264;
@@ -836,7 +770,6 @@ void CBERCal::DMR1K(const unsigned char *buffer, const unsigned char m_seq)
 	if (dmr_seq > 5U)
 		dmr_seq = 5U;
 
-	//timerStart();
 	m_timer.start();
 
 	for (unsigned int i = 0U; i < 33U; i++)
@@ -852,7 +785,7 @@ void CBERCal::DMR1K(const unsigned char *buffer, const unsigned char m_seq)
 		::fprintf(stdout, "DMR audio seq. %d, 1031 Test Pattern BER %% (errs): %.3f%% (%u/264)" EOL, dmr_seq, dmr_ber, errors);
 }
 
-void CBERCal::YSFFEC(const unsigned char* buffer)
+void CBERCal::YSFFEC(const unsigned char* buffer, float* BER)
 {
 	CYSFFICH fich;
 	bool valid = fich.decode(buffer);
@@ -862,18 +795,23 @@ void CBERCal::YSFFEC(const unsigned char* buffer)
 		unsigned char dt = fich.getDT();
 
 		if (fi == YSF_FI_HEADER) {
-			::fprintf(stdout, "YSF voice header received" EOL);
-			//timerStart();
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "YSF voice header received" EOL);
+			
 			m_timer.start();
 			m_errors = 0U;
 			m_bits = 0U;
 			m_frames = 0U;
 			return;
 		} else if (fi == YSF_FI_TERMINATOR) {
-			if (m_bits > 0U)
+			if (m_bits > 0U) {
+				if (m_consoleOutputEnabled)
 				::fprintf(stdout, "YSF voice end received, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
-			//timerStop();
+				if (BER != nullptr)
+					*BER = float(m_errors * 100U) / float(m_bits);
+			}
+
 			m_timer.stop();
 			m_errors = 0U;
 			m_bits = 0U;
@@ -882,7 +820,6 @@ void CBERCal::YSFFEC(const unsigned char* buffer)
 		} else if (fi == YSF_FI_COMMUNICATIONS && dt == YSF_DT_VD_MODE2) {
 			buffer += YSF_SYNC_LENGTH_BYTES + YSF_FICH_LENGTH_BYTES;
 
-			//timerStart();
 			m_timer.start();
 
 			unsigned int errors = 0U;
@@ -926,16 +863,21 @@ void CBERCal::YSFFEC(const unsigned char* buffer)
 				errors += errs;
 			}
 	
+			float ysfBer = float(errors) / 4.05F;
+			if (BER != nullptr)
+				*BER = ysfBer;
+
 			m_bits += 405U;
 			m_errors += errors;
 			m_frames++;
 
-			::fprintf(stdout, "YSF, V/D Mode 2, Repetition FEC BER %% (errs): %.3f%% (%u/405)" EOL, float(errors) / 4.05F, errors);
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "YSF, V/D Mode 2, Repetition FEC BER %% (errs): %.3f%% (%u/405)" EOL, float(errors) / 4.05F, errors);
 		}
 	}
 }
 
-void CBERCal::P25FEC(const unsigned char* buffer)
+void CBERCal::P25FEC(const unsigned char* buffer, float* BER)
 {
 	unsigned char nid[8U];
 	CP25Utils::decode(buffer, nid, 48U, 114U);
@@ -945,8 +887,9 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 	unsigned char imbe[18U];
 
 	if (duid == 0x00U) {
-		::fprintf(stdout, "P25 HDU received" EOL);
-		//timerStart();
+		if (m_consoleOutputEnabled)
+			::fprintf(stdout, "P25 HDU received" EOL);
+		
 		m_timer.start();
 		m_bits = 0U;
 		m_errors = 0U;
@@ -954,10 +897,14 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 		return;
 	}
 	else if (duid == 0x03U) {
-		if (m_bits > 0U)
-			::fprintf(stdout, "P25 TDU received, total frames: %d, bits: %d, errors: %d, BER: %.4f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
+		if (m_bits > 0U) {
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "P25 TDU received, total frames: %d, bits: %d, errors: %d, BER: %.4f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
-		//timerStop();
+			if (BER != nullptr)
+				*BER = float(m_errors * 100U) / float(m_bits);
+		}
+
 		m_timer.stop();
 		m_bits = 0U;
 		m_errors = 0U;
@@ -965,7 +912,6 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 		return;
 	}
 	else if (duid == 0x05U) {
-		//timerStart();
 		m_timer.start();
 
 		CP25Utils::decode(buffer, imbe, 114U, 262U);
@@ -996,7 +942,9 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 		errs += regenerateIMBE(imbe);
 
 		float ber = float(errs) / 12.33F;
-		if (ber < 10.0F)
+		if (BER != nullptr)
+			*BER = ber;
+		if (ber < 10.0F && m_consoleOutputEnabled)
 			::fprintf(stdout, "P25 LDU1 audio FEC BER %% (errs): %.3f%% (%u/1233)" EOL, ber, errs);
 
 		m_bits += 1233U;
@@ -1004,7 +952,6 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 		m_frames++;
 	}
 	else if (duid == 0x0AU) {
-		//timerStart();
 		m_timer.start();
 
 		CP25Utils::decode(buffer, imbe, 114U, 262U);
@@ -1035,7 +982,9 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 		errs += regenerateIMBE(imbe);
 
 		float ber = float(errs) / 12.33F;
-		if (ber < 10.0F)
+		if (BER != nullptr)
+			*BER = ber;
+		if (ber < 10.0F && m_consoleOutputEnabled)
 			::fprintf(stdout, "P25 LDU2 audio FEC BER %% (errs): %.3f%% (%u/1233)" EOL, ber, errs);
 
 		m_bits += 1233U;
@@ -1044,7 +993,7 @@ void CBERCal::P25FEC(const unsigned char* buffer)
 	}
 }
 
-void CBERCal::NXDNFEC(const unsigned char* buffer, const unsigned char m_tag)
+void CBERCal::NXDNFEC(const unsigned char* buffer, const unsigned char m_tag, float* BER)
 {
 	unsigned char data[NXDN_FRAME_LENGTH_BYTES];
 
@@ -1061,18 +1010,23 @@ void CBERCal::NXDNFEC(const unsigned char* buffer, const unsigned char m_tag)
 
 		if (usc == NXDN_LICH_USC_SACCH_NS) {
 			if (m_frames == 0U) {
-				::fprintf(stdout, "NXDN voice header received" EOL);
-				//timerStart();
+				if (m_consoleOutputEnabled)
+					::fprintf(stdout, "NXDN voice header received" EOL);
+				
 				m_timer.start();
 				m_errors = 0U;
 				m_bits = 0U;
 				m_frames = 0U;
 				return;
 			} else {
-				if (m_bits > 0U)
-					::fprintf(stdout, "NXDN voice end received, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
+				if (m_bits > 0U) {
+					if (m_consoleOutputEnabled)
+						::fprintf(stdout, "NXDN voice end received, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
-				//timerStop();
+					if (BER != nullptr)
+						*BER = float(m_errors * 100U) / float(m_bits); 
+				}
+				
 				m_timer.stop();
 				m_errors = 0U;
 				m_bits = 0U;
@@ -1080,7 +1034,7 @@ void CBERCal::NXDNFEC(const unsigned char* buffer, const unsigned char m_tag)
 				return;
 			}
 		} else if (opt == NXDN_LICH_STEAL_NONE) {
-			//timerStart();
+			
 			m_timer.start();
 
 			unsigned int errors = 0U;
@@ -1089,11 +1043,16 @@ void CBERCal::NXDNFEC(const unsigned char* buffer, const unsigned char m_tag)
 			errors += regenerateYSFDN(data + NXDN_FSW_LICH_SACCH_LENGTH_BYTES + 18U);
 			errors += regenerateYSFDN(data + NXDN_FSW_LICH_SACCH_LENGTH_BYTES + 27U);
 
+			float ber = float(errors) / 1.88F;
+			if (BER != nullptr)
+				*BER = ber;
+
 			m_bits += 188U;
 			m_errors += errors;
 			m_frames++;
 
-			::fprintf(stdout, "NXDN audio FEC BER %% (errs): %.3f%% (%u/188)" EOL, float(errors) / 1.88F, errors);
+			if (m_consoleOutputEnabled)
+				::fprintf(stdout, "NXDN audio FEC BER %% (errs): %.3f%% (%u/188)" EOL, float(errors) / 1.88F, errors);
 		}
 	}
 }
@@ -1361,7 +1320,7 @@ void CBERCal::clock(unsigned int ms)
 {
 	m_timer.clock(ms);
 	if (m_timer.isRunning() && m_timer.hasExpired()) {
-			if (m_bits > 0U)
+			if (m_bits > 0U && m_consoleOutputEnabled)
 				::fprintf(stdout, "Transmission lost, total frames: %d, bits: %d, errors: %d, BER: %.5f%%" EOL, m_frames, m_bits, m_errors, float(m_errors * 100U) / float(m_bits));
 
 			if (m_bits != 0U) {
@@ -1375,6 +1334,39 @@ void CBERCal::clock(unsigned int ms)
 			m_frames = 0U;
 			m_timer.stop();
 	}
+}
+
+std::string CBERCal::FECTestTypeToString(FEC_TEST_TYPE type)
+{
+	std::string typeString;
+
+    switch (type) {
+		case FTT_DSTAR:
+			typeString = "D-Star";
+			break;
+
+		case FTT_DMR:
+			typeString = "DMR";
+			break;
+
+		case FTT_YSF:
+			typeString = "YSF";
+			break;
+
+		case FTT_P25:
+			typeString = "P25";
+			break;
+
+		case FTT_NXDN:
+			typeString = "NXDN";
+			break;
+
+		default:
+			typeString = "Invalid Type";
+			break;
+	}
+
+	return typeString;
 }
 
 unsigned char CBERCal::countErrs(unsigned char a, unsigned char b)
